@@ -1,0 +1,4 @@
+.DS_Store
+.env
+.supabase/
+node_modules/
