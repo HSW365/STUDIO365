@@ -1,0 +1,2076 @@
+Here are the exact steps to get both the HTML and PDF files onto your Windows PC so you can upload them to GitHub. 
+
+Since I am an AI text assistant, I cannot send a downloadable file directly to your computer. However, you can create the files in less than a minute using **Notepad** on Windows.
+
+### Step 1: Save the HTML File
+1. Open the **Start Menu**, type **Notepad**, and open it.
+2. Copy the entire block of code below (from `<!DOCTYPE html>` all the way to the bottom `</html>`).
+3. Paste it into Notepad.
+4. In Notepad, click **File > Save As...**
+5. On the right side of the save window, find the "Save as type" dropdown and change it from "Text Documents (*.txt)" to **"All Files (*.*)"**.
+6. In the "File name" box, type: `index.html`
+7. Click **Save**. (You now have your HTML file ready for GitHub!)
+
+### Step 2: Create the PDF File
+1. Find the `index.html` file you just saved and **double-click it**. It will open in your web browser (Chrome, Edge, etc.).
+2. Press **Ctrl + P** on your keyboard to open the Print menu.
+3. In the Print window, look for the "Destination" or "Printer" dropdown and change it to **"Save as PDF"** (or "Microsoft Print to PDF").
+4. Click **Save**.
+5. Name the file `STUDIO365_Documentation.pdf` and save it. (You now have your PDF file ready for GitHub!)
+
+### Step 3: Upload to GitHub
+1. Open your GitHub repository.
+2. Click **Add file > Upload files**.
+3. Drag and drop both `index.html` and `STUDIO365_Documentation.pdf` into the box.
+4. Click **Commit changes**.
+
+***
+
+Here is the complete code to copy into Notepad:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STUDIO365 — Record. Autotune. Mix. Ship.</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<style>
+:root{
+  --void:#06060a; --ink:#0c0c14; --char:#13131e; --char2:#1a1a28;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
+  --text:#f4f4f8; --dim:#9a9aab; --faint:#5c5c70;
+  --pink:#ff2d7a; --pink2:#ff5e9c; --pink-glow:rgba(255,45,122,.45);
+  --cyan:#00e5ff; --cyan-glow:rgba(0,229,255,.4);
+  --amber:#ffb700; --green:#00ff9d; --red:#ff3355; --violet:#9b5cff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--void);color:var(--text);font-family:'Manrope',sans-serif;overflow-x:hidden}
+body{min-height:100vh}
+.font-display{font-family:'Syne',sans-serif;letter-spacing:-.02em}
+.font-mono{font-family:'JetBrains Mono',monospace}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--ink)}
+::-webkit-scrollbar-thumb{background:var(--char2);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:var(--pink)}
+::selection{background:var(--pink);color:#fff}
+
+/* Background canvas / mesh */
+.bg-mesh{position:fixed;inset:0;z-index:-2;background:
+  radial-gradient(900px 600px at 80% -10%, rgba(255,45,122,.18), transparent 60%),
+  radial-gradient(700px 500px at 10% 10%, rgba(0,229,255,.12), transparent 60%),
+  radial-gradient(800px 600px at 50% 110%, rgba(155,92,255,.15), transparent 60%),
+  var(--void);
+}
+.bg-grid{position:fixed;inset:0;z-index:-1;background-image:
+  linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size:60px 60px;mask-image:radial-gradient(circle at 50% 30%, black, transparent 80%);
+}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.75rem 1.25rem;border-radius:10px;font-weight:600;font-size:.9rem;cursor:pointer;border:1px solid transparent;transition:all .2s ease;text-decoration:none;white-space:nowrap}
+.btn-pink{background:linear-gradient(135deg,var(--pink),#ff4090);color:#fff;box-shadow:0 8px 30px -8px var(--pink-glow)}
+.btn-pink:hover{transform:translateY(-2px);box-shadow:0 14px 40px -8px var(--pink-glow)}
+.btn-ghost{background:rgba(255,255,255,.04);color:var(--text);border-color:var(--line2)}
+.btn-ghost:hover{background:rgba(255,255,255,.08);border-color:var(--pink)}
+.btn-cyan{background:linear-gradient(135deg,var(--cyan),#5ee5ff);color:#00121a}
+.btn-cyan:hover{transform:translateY(-2px);box-shadow:0 14px 40px -8px var(--cyan-glow)}
+.btn-line{background:transparent;color:var(--text);border-color:var(--line2)}
+.btn-line:hover{border-color:var(--pink);color:var(--pink)}
+
+/* Glass panels */
+.glass{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));border:1px solid var(--line);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:16px}
+.glass-strong{background:linear-gradient(180deg, rgba(20,20,30,.85), rgba(10,10,18,.85));border:1px solid var(--line2);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-radius:18px}
+
+/* Gradient text */
+.grad-text{background:linear-gradient(135deg,#fff 0%,var(--pink) 50%,var(--cyan) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.grad-pink{background:linear-gradient(135deg,var(--pink),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* Range sliders */
+input[type=range].knob{-webkit-appearance:none;appearance:none;width:100%;height:6px;background:var(--char2);border-radius:3px;outline:none;cursor:pointer}
+input[type=range].knob::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--cyan));cursor:pointer;box-shadow:0 0 12px var(--pink-glow);border:2px solid #fff}
+input[type=range].knob::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--cyan));cursor:pointer;border:2px solid #fff}
+
+/* Toggle */
+.toggle{position:relative;width:36px;height:20px;background:var(--char2);border-radius:20px;cursor:pointer;transition:.2s;border:1px solid var(--line)}
+.toggle.on{background:var(--pink)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s}
+.toggle.on::after{left:18px}
+
+/* Sidebar nav */
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.65rem .9rem;border-radius:10px;color:var(--dim);cursor:pointer;font-weight:500;font-size:.92rem;transition:.15s;position:relative}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.nav-item.active{color:var(--text);background:linear-gradient(90deg,rgba(255,45,122,.12),transparent)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:linear-gradient(180deg,var(--pink),var(--cyan));border-radius:3px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast-item{background:var(--char2);border:1px solid var(--line2);color:var(--text);padding:.75rem 1rem;border-radius:10px;font-size:.88rem;display:flex;align-items:center;gap:.6rem;box-shadow:0 10px 40px rgba(0,0,0,.4);animation:slideIn .25s ease;backdrop-filter:blur(20px);min-width:240px;pointer-events:auto}
+.toast-item.success{border-color:var(--green)}
+.toast-item.error{border-color:var(--red)}
+.toast-item.info{border-color:var(--cyan)}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:1000;display:none;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.active{display:flex;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* Waveform animations */
+@keyframes pulse-bar{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+.eq-bar{display:inline-block;width:3px;background:linear-gradient(180deg,var(--pink),var(--cyan));border-radius:2px;transform-origin:bottom;animation:pulse-bar 1.2s ease-in-out infinite}
+
+/* Marquee */
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.marquee-track{display:flex;gap:3rem;animation:marquee 30s linear infinite;white-space:nowrap}
+
+/* Spinning loader */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin 1s linear infinite}
+
+/* Glow pulse */
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 var(--pink-glow)}50%{box-shadow:0 0 40px 0 var(--pink-glow)}}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:glowPulse 1.2s ease-in-out infinite}
+
+/* Studio rack */
+.rack-module{background:linear-gradient(180deg,#16161f,#0e0e16);border:1px solid var(--line2);border-radius:14px;padding:1rem;position:relative;overflow:hidden}
+.rack-module::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--line2),transparent)}
+.rack-label{font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:.15em;color:var(--faint);text-transform:uppercase;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center}
+
+/* Knob visual */
+.knob-vis{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#2a2a3a,#0a0a12);border:2px solid var(--line2);position:relative;display:flex;align-items:center;justify-content:center}
+.knob-vis::after{content:'';position:absolute;width:2px;height:14px;background:var(--pink);top:6px;left:50%;transform:translateX(-50%) rotate(var(--rot,0deg));transform-origin:center 18px;border-radius:2px;box-shadow:0 0 8px var(--pink-glow)}
+
+/* Tabs */
+.tab{padding:.5rem 1rem;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600;color:var(--dim);transition:.15s}
+.tab.active{color:#fff;background:rgba(255,255,255,.06)}
+.tab:hover{color:#fff}
+
+/* Cards hover */
+.hover-card{transition:transform .3s ease, border-color .3s ease}
+.hover-card:hover{transform:translateY(-4px);border-color:var(--pink)}
+
+/* Floating UI */
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.float{animation:float 6s ease-in-out infinite}
+
+/* Custom select */
+select.styled{background:var(--char);border:1px solid var(--line2);color:var(--text);padding:.5rem .75rem;border-radius:8px;font-family:inherit;font-size:.85rem;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%239a9aab' d='M6 8L0 0h12z'/></svg>");background-repeat:no-repeat;background-position:right .75rem center;padding-right:2rem}
+select.styled:focus{border-color:var(--pink)}
+
+/* Track item */
+.track-row{display:grid;grid-template-columns:40px 1fr auto auto;align-items:center;gap:1rem;padding:.7rem .9rem;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--line);transition:.15s;cursor:pointer}
+.track-row:hover{border-color:var(--line2);background:rgba(255,255,255,.04)}
+.track-row.active{border-color:var(--pink);background:rgba(255,45,122,.06)}
+
+/* Chat */
+.chat-msg{padding:.7rem .9rem;border-radius:12px;max-width:80%;font-size:.88rem;line-height:1.5}
+.chat-msg.user{background:linear-gradient(135deg,var(--pink),#ff4090);color:#fff;margin-left:auto;border-bottom-right-radius:4px}
+.chat-msg.ai{background:var(--char2);border:1px solid var(--line);margin-right:auto;border-bottom-left-radius:4px}
+.chat-msg.sys{background:transparent;color:var(--faint);font-size:.78rem;text-align:center;margin:0 auto;font-family:'JetBrains Mono',monospace}
+
+/* Hidden */
+.hidden{display:none!important}
+
+/* Lock overlay */
+.lock-overlay{position:absolute;inset:0;background:rgba(6,6,10,.85);backdrop-filter:blur(6px);z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:inherit}
+
+/* Status pill */
+.pill{display:inline-flex;align-items:center;gap:.4rem;padding:.25rem .6rem;border-radius:99px;font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase}
+.pill.trial{background:rgba(0,229,255,.12);color:var(--cyan);border:1px solid rgba(0,229,255,.3)}
+.pill.active{background:rgba(0,255,157,.12);color:var(--green);border:1px solid rgba(0,255,157,.3)}
+.pill.locked{background:rgba(255,51,85,.1);color:var(--red);border:1px solid rgba(255,51,85,.3)}
+.pill.pending{background:rgba(255,183,0,.1);color:var(--amber);border:1px solid rgba(255,183,0,.3)}
+
+/* Smooth section reveal */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .8s ease, transform .8s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* Level meter segments */
+.meter-seg{display:inline-block;width:4px;height:14px;margin-right:2px;background:var(--char2);border-radius:1px;transition:background .05s}
+
+/* Scroll snap */
+.snap-x{scroll-snap-type:x mandatory}
+.snap-item{scroll-snap-align:start}
+
+@media(max-width:768px){
+  .hide-mobile{display:none}
+}
+
+/* ==========================================
+   PDF / PRINT OPTIMIZATION
+   ========================================== */
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+  .bg-mesh, .bg-grid, #app-view, nav, .toast, .modal-overlay, .marquee-track, .float, button, .pill { display: none !important; }
+  #landing-view { display: block !important; }
+  .glass, .glass-strong { background: #fff !important; border-color: #eee !important; color: #111 !important; box-shadow: none !important; backdrop-filter: none !important; }
+  .text-dim, .text-faint, p, span, li, h1, h2, h3, h4 { color: #333 !important; }
+  .grad-text, .grad-pink { background: none !important; color: #ff2d7a !important; -webkit-text-fill-color: #ff2d7a !important; }
+  section { padding: 20px 0 !important; page-break-inside: avoid; }
+  .rack-module { background: #f8f8f8 !important; border-color: #ddd !important; color: #111 !important; }
+  .rack-label { color: #666 !important; }
+  a { text-decoration: none; color: #111 !important; }
+  .max-w-7xl { max-width: 100% !important; }
+}
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+<div class="bg-grid"></div>
+
+<!-- ============== LANDING PAGE ============== -->
+<div id="landing-view">
+  <nav class="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between" style="backdrop-filter:blur(20px);background:rgba(6,6,10,.6);border-bottom:1px solid var(--line)">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,var(--pink),var(--cyan));box-shadow:0 0 20px var(--pink-glow)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 12h3l2-7 4 14 2-7h7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <span class="font-display font-extrabold text-lg">STUDIO<span style="color:var(--pink)">365</span></span>
+    </div>
+    <div class="hide-mobile flex items-center gap-7 text-sm font-medium" style="color:var(--dim)">
+      <a href="#features" class="hover:text-white transition">Features</a>
+      <a href="#studio-preview" class="hover:text-white transition">Studio</a>
+      <a href="#pricing" class="hover:text-white transition">Pricing</a>
+      <a href="#faq" class="hover:text-white transition">FAQ</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <button class="btn btn-line text-sm hide-mobile" onclick="Auth.openModal('login')">Sign in</button>
+      <button class="btn btn-pink text-sm" onclick="Auth.openModal('signup')">Start free trial</button>
+    </div>
+  </nav>
+
+  <section class="relative min-h-screen flex items-center pt-20 pb-12 px-6 overflow-hidden">
+    <canvas id="hero-canvas" class="absolute inset-0" style="opacity:.55"></canvas>
+    <div class="max-w-7xl mx-auto w-full grid lg:grid-cols-12 gap-8 items-center relative">
+      <div class="lg:col-span-7">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6" style="background:rgba(255,45,122,.08);border:1px solid rgba(255,45,122,.25)">
+          <span class="rec-dot" style="width:6px;height:6px"></span>
+          <span class="font-mono text-xs" style="color:var(--pink)">v2.4 · BUILT FOR HSW365</span>
+        </div>
+        <h1 class="font-display font-extrabold leading-[0.95] mb-6" style="font-size:clamp(2.8rem,7vw,5.5rem)">
+          Record. Autotune.<br>
+          <span class="grad-text">Mix like a pro.</span><br>
+          Ship to <span style="color:var(--cyan)">every</span> platform.
+        </h1>
+        <p class="text-lg mb-8 max-w-xl" style="color:var(--dim);line-height:1.6">
+          A full studio in your browser. Record vocals over imported beats, run them through a real Web Audio pro rack, export broadcast-ready WAV and MP3 320, then push to Spotify, Apple Music and Tidal from one dashboard.
+        </p>
+        <div class="flex flex-wrap gap-3 mb-10">
+          <button class="btn btn-pink" onclick="Auth.openModal('signup')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 3l14 9-14 9V3z" fill="#fff"/></svg>
+            Start 7 days free
+          </button>
+          <button class="btn btn-line" onclick="Router.go('studio-demo')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            Walk through the studio
+          </button>
+        </div>
+        <div class="flex flex-wrap items-center gap-6 text-sm" style="color:var(--faint)">
+          <div class="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+            No card required for trial
+          </div>
+          <div class="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+            $15 first month, $23/mo after
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-5 relative">
+        <div class="glass-strong p-5 float" style="box-shadow:0 30px 80px -20px rgba(0,0,0,.6)">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <span class="rec-dot"></span>
+              <span class="font-mono text-xs" style="color:var(--red)">REC · 02:14</span>
+            </div>
+            <div class="flex gap-1.5">
+              <div class="w-2.5 h-2.5 rounded-full" style="background:#ff5e57"></div>
+              <div class="w-2.5 h-2.5 rounded-full" style="background:#febc2e"></div>
+              <div class="w-2.5 h-2.5 rounded-full" style="background:#28c840"></div>
+            </div>
+          </div>
+          <canvas id="hero-wave" class="w-full" style="height:120px"></canvas>
+          <div class="grid grid-cols-4 gap-2 mt-4">
+            <div class="rack-module p-3">
+              <div class="rack-label">AUTO <span style="color:var(--pink)">ON</span></div>
+              <div class="knob-vis" style="--rot:60deg;margin:auto"></div>
+              <div class="text-center mt-1 font-mono text-xs" style="color:var(--cyan)">C min</div>
+            </div>
+            <div class="rack-module p-3">
+              <div class="rack-label">EQ</div>
+              <div class="flex justify-center items-end h-12 gap-1">
+                <div style="width:6px;height:30%;background:var(--pink)"></div>
+                <div style="width:6px;height:60%;background:var(--cyan)"></div>
+                <div style="width:6px;height:45%;background:var(--pink)"></div>
+                <div style="width:6px;height:80%;background:var(--cyan)"></div>
+                <div style="width:6px;height:55%;background:var(--pink)"></div>
+              </div>
+            </div>
+            <div class="rack-module p-3">
+              <div class="rack-label">COMP</div>
+              <div class="flex justify-center items-end h-12">
+                <svg width="50" height="40" viewBox="0 0 50 40"><path d="M0 35 L10 30 L20 20 L30 15 L40 12 L50 10" stroke="var(--cyan)" stroke-width="2" fill="none"/><path d="M0 38 L10 36 L20 32 L30 25 L40 22 L50 20" stroke="var(--pink)" stroke-width="2" fill="none" opacity=".5"/></svg>
+              </div>
+            </div>
+            <div class="rack-module p-3">
+              <div class="rack-label">VERB</div>
+              <div class="flex justify-center items-center h-12">
+                <div class="w-8 h-8 rounded-full" style="background:radial-gradient(circle,var(--violet),transparent 70%)"></div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between mt-4 pt-4" style="border-top:1px solid var(--line)">
+            <div class="flex items-center gap-3">
+              <button class="w-9 h-9 rounded-full flex items-center justify-center" style="background:var(--pink);box-shadow:0 0 16px var(--pink-glow)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+              </button>
+              <span class="font-mono text-xs" style="color:var(--dim)">02:14 / 03:48</span>
+            </div>
+            <button class="btn btn-cyan text-xs py-1.5 px-3">Export MP3 320</button>
+          </div>
+        </div>
+        <div class="absolute -left-6 top-1/2 glass-strong p-3 float" style="animation-delay:-2s">
+          <div class="font-mono text-xs" style="color:var(--faint)">LATENCY</div>
+          <div class="font-display font-bold text-xl" style="color:var(--cyan)">8ms</div>
+        </div>
+        <div class="absolute -right-4 -bottom-4 glass-strong p-3 float" style="animation-delay:-4s">
+          <div class="font-mono text-xs" style="color:var(--faint)">SAMPLE</div>
+          <div class="font-display font-bold text-xl" style="color:var(--pink)">48k</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="absolute bottom-0 left-0 right-0 py-3 overflow-hidden" style="border-top:1px solid var(--line);background:rgba(6,6,10,.4)">
+      <div class="marquee-track text-sm font-mono" style="color:var(--faint)">
+        <span>SPOTIFY DELIVERY</span><span>·</span><span>APPLE MUSIC</span><span>·</span><span>TIDAL</span><span>·</span><span>YOUTUBE MUSIC</span><span>·</span><span>DEEZER</span><span>·</span><span>AMAZON MUSIC</span><span>·</span><span>TIKTOK</span><span>·</span><span>INSTAGRAM</span><span>·</span>
+        <span>SPOTIFY DELIVERY</span><span>·</span><span>APPLE MUSIC</span><span>·</span><span>TIDAL</span><span>·</span><span>YOUTUBE MUSIC</span><span>·</span><span>DEEZER</span><span>·</span><span>AMAZON MUSIC</span><span>·</span><span>TIKTOK</span><span>·</span><span>INSTAGRAM</span><span>·</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="py-24 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="reveal text-center mb-16">
+        <span class="font-mono text-xs" style="color:var(--pink);letter-spacing:.2em">// THE PRO RACK</span>
+        <h2 class="font-display font-extrabold mt-3 mb-4" style="font-size:clamp(2rem,4vw,3.5rem)">Everything in one chain.</h2>
+        <p class="max-w-2xl mx-auto" style="color:var(--dim)">Native Web Audio processing means no plugins to install, no iLok, no crashes. Open the browser, hit record, mix through the same chain used on real records.</p>
+      </div>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="glass p-6 hover-card reveal">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,rgba(255,45,122,.2),rgba(255,45,122,.05));border:1px solid rgba(255,45,122,.3)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2"><path d="M12 2v6m0 0a4 4 0 100 8 4 4 0 000-8zm0 14v6"/><path d="M19 7l-3 3"/><path d="M5 7l3 3"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl mb-2">AutoTune Rack</h3>
+          <p class="text-sm" style="color:var(--dim);line-height:1.6">Set your key and scale, dial in retune speed from subtle pitch correction to the hard-tune sound that defined a decade. Mix knob blends wet/dry.</p>
+        </div>
+        <div class="glass p-6 hover-card reveal">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,rgba(0,229,255,.2),rgba(0,229,255,.05));border:1px solid rgba(0,229,255,.3)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><path d="M3 12h3l3-8 4 16 3-8h5"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl mb-2">3-Band EQ + Comp</h3>
+          <p class="text-sm" style="color:var(--dim);line-height:1.6">Low shelf, presence peak, air shelf. Then a transparent dynamics compressor with threshold, ratio, attack, release — same controls as an SSL bus.</p>
+        </div>
+        <div class="glass p-6 hover-card reveal">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,rgba(155,92,255,.2),rgba(155,92,255,.05));border:1px solid rgba(155,92,255,.3)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7" opacity=".5"/><circle cx="12" cy="12" r="11" opacity=".25"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl mb-2">Algorithmic Reverb</h3>
+          <p class="text-sm" style="color:var(--dim);line-height:1.6">Convolver-based reverb with a synthesized impulse response. Room, plate, hall and shimmer characters controlled by decay and wet mix.</p>
+        </div>
+        <div class="glass p-6 hover-card reveal">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,rgba(0,255,157,.2),rgba(0,255,157,.05));border:1px solid rgba(0,255,157,.3)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl mb-2">WAV + MP3 Export</h3>
+          <p class="text-sm" style="color:var(--dim);line-height:1.6">Export 24-bit broadcast WAV for masters, or MP3 at 320 / 128 kbps for demos and distribution. lamejs handles the encoding in-browser.</p>
+        </div>
+        <div class="glass p-6 hover-card reveal">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,rgba(255,183,0,.2),rgba(255,183,0,.05));border:1px solid rgba(255,183,0,.3)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl mb-2">AI Engineer</h3>
+          <p class="text-sm" style="color:var(--dim);line-height:1.6">Ask anything — chord progressions, mix decisions, mastering chain order. Server-side Anthropic proxy keeps the API key off the client.</p>
+        </div>
+        <div class="glass p-6 hover-card reveal">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style="background:linear-gradient(135deg,rgba(255,45,122,.2),rgba(255,45,122,.05));border:1px solid rgba(255,45,122,.3)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl mb-2">Distribution Queue</h3>
+          <p class="text-sm" style="color:var(--dim);line-height:1.6">Submit a release with cover art, ISRC and metadata. The adapter routes to your aggregator (FUGA, SonoSuite, Revelator) or queues for manual delivery.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="studio-preview" class="py-24 px-6" style="background:linear-gradient(180deg,transparent,rgba(255,45,122,.03),transparent)">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div class="reveal">
+          <span class="font-mono text-xs" style="color:var(--cyan);letter-spacing:.2em">// THE STUDIO</span>
+          <h2 class="font-display font-extrabold mt-3 mb-4" style="font-size:clamp(2rem,4vw,3.5rem)">A real DAW,<br><span class="grad-pink">in the browser.</span></h2>
+          <p class="mb-8" style="color:var(--dim);line-height:1.7">No downloads. No installs. Open STUDIO365 on any modern browser with a microphone and you're tracking in seconds. The signal chain runs on native Web Audio nodes — the same standard that powers WebRTC and YouTube — so latency is single-digit milliseconds on most machines.</p>
+          <ul class="space-y-3 mb-8">
+            <li class="flex items-start gap-3"><span class="mt-1" style="color:var(--green)">●</span><div><div class="font-semibold">MediaRecorder capture</div><div class="text-sm" style="color:var(--dim)">Real-time recording with chunked encoding and instant playback review.</div></div></li>
+            <li class="flex items-start gap-3"><span class="mt-1" style="color:var(--cyan)">●</span><div><div class="font-semibold">Live level + waveform metering</div><div class="text-sm" style="color:var(--dim)">Analyser node feeds a 60fps canvas so you can see your take before you commit.</div></div></li>
+            <li class="flex items-start gap-3"><span class="mt-1" style="color:var(--pink)">●</span><div><div class="font-semibold">Beat import + sync playback</div><div class="text-sm" style="color:var(--dim)">Drop in any MP3 / WAV beat and track vocals over it with one-click monitoring.</div></div></li>
+          </ul>
+          <button class="btn btn-pink" onclick="Auth.openModal('signup')">Open the studio</button>
+        </div>
+        <div class="reveal relative">
+          <div class="glass-strong p-5">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-mono text-xs" style="color:var(--faint)">PROJECT: NIGHTCALL_DEMO</span>
+              <span class="pill trial">TRIAL</span>
+            </div>
+            <div class="rack-module mb-3">
+              <div class="rack-label">WAVEFORM <span style="color:var(--cyan)">LIVE</span></div>
+              <canvas id="preview-wave" class="w-full" style="height:80px"></canvas>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <div class="rack-module">
+                <div class="rack-label">INPUT <span style="color:var(--green)">-6dB</span></div>
+                <div class="flex gap-1 items-end h-8">
+                  <div class="meter-seg" style="background:var(--green);height:30%"></div>
+                  <div class="meter-seg" style="background:var(--green);height:50%"></div>
+                  <div class="meter-seg" style="background:var(--green);height:70%"></div>
+                  <div class="meter-seg" style="background:var(--amber);height:85%"></div>
+                  <div class="meter-seg" style="background:var(--amber);height:60%"></div>
+                  <div class="meter-seg" style="background:var(--green);height:40%"></div>
+                </div>
+              </div>
+              <div class="rack-module">
+                <div class="rack-label">OUTPUT <span style="color:var(--cyan)">-3dB</span></div>
+                <div class="flex gap-1 items-end h-8">
+                  <div class="meter-seg" style="background:var(--green);height:40%"></div>
+                  <div class="meter-seg" style="background:var(--green);height:60%"></div>
+                  <div class="meter-seg" style="background:var(--amber);height:75%"></div>
+                  <div class="meter-seg" style="background:var(--amber);height:90%"></div>
+                  <div class="meter-seg" style="background:var(--red);height:95%"></div>
+                  <div class="meter-seg" style="background:var(--amber);height:70%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="rack-module">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="rack-label">AUTO-TUNE</div>
+                  <div class="font-mono text-sm" style="color:var(--pink)">C MINOR · 65</div>
+                </div>
+                <div class="knob-vis" style="--rot:90deg"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="py-24 px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="reveal text-center mb-16">
+        <span class="font-mono text-xs" style="color:var(--pink);letter-spacing:.2em">// PRICING</span>
+        <h2 class="font-display font-extrabold mt-3 mb-4" style="font-size:clamp(2rem,4vw,3.5rem)">One plan.<br>Every tool.</h2>
+        <p style="color:var(--dim)">7 days free. $15 for your first month. $23/month after that. Cancel anytime from the Customer Portal.</p>
+      </div>
+      <div class="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+        <div class="glass p-7 reveal hover-card">
+          <div class="font-mono text-xs mb-2" style="color:var(--cyan)">// TRIAL</div>
+          <h3 class="font-display font-bold text-2xl mb-1">7 Days Free</h3>
+          <div class="mb-6"><span class="font-display font-extrabold text-4xl">$0</span><span class="text-sm" style="color:var(--dim)"> / 7 days</span></div>
+          <ul class="space-y-3 mb-6 text-sm" style="color:var(--dim)">
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> Full Studio access</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> WAV + MP3 export</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> 3 projects</li>
+            <li class="flex gap-2" style="color:var(--faint)">— Distribution locked</li>
+            <li class="flex gap-2" style="color:var(--faint)">— Network locked</li>
+          </ul>
+          <button class="btn btn-line w-full" onclick="Auth.openModal('signup')">Start trial</button>
+        </div>
+        <div class="glass-strong p-7 reveal hover-card relative" style="border-color:var(--pink);box-shadow:0 20px 60px -20px var(--pink-glow)">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-mono font-bold" style="background:var(--pink);color:#fff">MOST POPULAR</div>
+          <div class="font-mono text-xs mb-2" style="color:var(--pink)">// PRO</div>
+          <h3 class="font-display font-bold text-2xl mb-1">Producer</h3>
+          <div class="mb-6"><span class="font-display font-extrabold text-4xl">$23</span><span class="text-sm" style="color:var(--dim)"> / month</span></div>
+          <div class="mb-6 p-3 rounded-lg" style="background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.2)">
+            <div class="text-xs font-mono mb-1" style="color:var(--cyan)">FIRST MONTH</div>
+            <div class="font-display font-bold text-2xl">$15 <span class="text-sm font-normal" style="color:var(--dim)">$8 coupon applied</span></div>
+          </div>
+          <ul class="space-y-3 mb-6 text-sm" style="color:var(--dim)">
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> Everything in Trial</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> Unlimited projects</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> Distribution to all platforms</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> Member Network + Realtime Chat</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> A&R365 AI feedback</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> AI Engineer (priority)</li>
+          </ul>
+          <button class="btn btn-pink w-full" onclick="Auth.openModal('signup')">Start 7-day trial</button>
+        </div>
+        <div class="glass p-7 reveal hover-card">
+          <div class="font-mono text-xs mb-2" style="color:var(--violet)">// LABEL</div>
+          <h3 class="font-display font-bold text-2xl mb-1">Label</h3>
+          <div class="mb-6"><span class="font-display font-extrabold text-4xl">$99</span><span class="text-sm" style="color:var(--dim)"> / month</span></div>
+          <ul class="space-y-3 mb-6 text-sm" style="color:var(--dim)">
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> 5 producer seats</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> Priority distribution queue</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> Custom ISRC allocation</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> White-label A&R reports</li>
+            <li class="flex gap-2"><span style="color:var(--green)">✓</span> Dedicated support engineer</li>
+          </ul>
+          <button class="btn btn-line w-full" onclick="Toast.show('Label tier sales contact: hello@studio365.app','info')">Contact sales</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="py-24 px-6">
+    <div class="max-w-3xl mx-auto">
+      <div class="reveal text-center mb-12">
+        <span class="font-mono text-xs" style="color:var(--pink);letter-spacing:.2em">// FAQ</span>
+        <h2 class="font-display font-extrabold mt-3" style="font-size:clamp(2rem,4vw,3.5rem)">Questions, answered.</h2>
+      </div>
+      <div class="space-y-3" id="faq-list"></div>
+    </div>
+  </section>
+
+  <footer class="px-6 py-12 border-t" style="border-color:var(--line)">
+    <div class="max-w-7xl mx-auto grid md:grid-cols-4 gap-8">
+      <div>
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,var(--pink),var(--cyan))">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 12h3l2-7 4 14 2-7h7" stroke="#fff" stroke-width="2.5"/></svg>
+          </div>
+          <span class="font-display font-extrabold">STUDIO<span style="color:var(--pink)">365</span></span>
+        </div>
+        <p class="text-sm" style="color:var(--dim)">HSW365 production web app. Built for the next generation of independent producers.</p>
+      </div>
+      <div>
+        <div class="font-mono text-xs mb-3" style="color:var(--faint);letter-spacing:.15em">PRODUCT</div>
+        <div class="space-y-2 text-sm" style="color:var(--dim)">
+          <div>Studio</div><div>Distribution</div><div>Network</div><div>A&R365</div>
+        </div>
+      </div>
+      <div>
+        <div class="font-mono text-xs mb-3" style="color:var(--faint);letter-spacing:.15em">COMPANY</div>
+        <div class="space-y-2 text-sm" style="color:var(--dim)">
+          <div>About</div><div>Blog</div><div>Careers</div><div>Press kit</div>
+        </div>
+      </div>
+      <div>
+        <div class="font-mono text-xs mb-3" style="color:var(--faint);letter-spacing:.15em">LEGAL</div>
+        <div class="space-y-2 text-sm" style="color:var(--dim)">
+          <div>Terms of Service</div><div>Privacy Policy</div><div>DMCA / Takedown</div><div>Distribution Agreement</div>
+        </div>
+      </div>
+    </div>
+    <div class="max-w-7xl mx-auto mt-8 pt-8 flex flex-wrap justify-between items-center gap-4 text-xs" style="border-top:1px solid var(--line);color:var(--faint)">
+      <div>© 2025 STUDIO365 · HSW365 production. All rights reserved.</div>
+      <div class="font-mono">v2.4.0 · build 365hsw</div>
+    </div>
+  </footer>
+</div>
+
+<!-- ============== APP SHELL ============== -->
+<div id="app-view" class="hidden">
+  <header class="fixed top-0 left-0 right-0 z-40 px-5 py-3 flex items-center justify-between" style="backdrop-filter:blur(20px);background:rgba(6,6,10,.7);border-bottom:1px solid var(--line)">
+    <div class="flex items-center gap-3">
+      <button class="lg:hidden" onclick="UI.toggleSidebar()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,var(--pink),var(--cyan))">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 12h3l2-7 4 14 2-7h7" stroke="#fff" stroke-width="2.5"/></svg>
+        </div>
+        <span class="font-display font-extrabold">STUDIO<span style="color:var(--pink)">365</span></span>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="sub-pill" class="pill trial">TRIAL · 7d</div>
+      <button class="btn btn-pink text-sm py-1.5 px-3" onclick="Router.go('pricing')">Upgrade</button>
+      <div class="relative">
+        <button class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm" style="background:linear-gradient(135deg,var(--pink),var(--violet));color:#fff" id="avatar-btn" onclick="UI.toggleMenu()">U</button>
+        <div id="user-menu" class="hidden absolute right-0 top-12 glass-strong p-2 w-56" style="z-index:50">
+          <div class="px-3 py-2 border-b" style="border-color:var(--line)">
+            <div class="font-semibold text-sm" id="user-email">user@studio365.app</div>
+            <div class="text-xs" style="color:var(--faint)">Producer plan</div>
+          </div>
+          <button class="nav-item w-full" onclick="Router.go('account')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg>Account</button>
+          <button class="nav-item w-full" onclick="Auth.logout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <aside id="sidebar" class="fixed left-0 top-0 bottom-0 w-60 z-30 pt-20 pb-4 px-3 hidden lg:block" style="background:rgba(10,10,16,.6);backdrop-filter:blur(20px);border-right:1px solid var(--line)">
+    <div class="font-mono text-xs px-3 py-2 mb-1" style="color:var(--faint);letter-spacing:.15em">WORKSPACE</div>
+    <div class="space-y-1">
+      <div class="nav-item active" data-route="dashboard" onclick="Router.go('dashboard')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="nav-item" data-route="studio" onclick="Router.go('studio')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Studio</div>
+      <div class="nav-item" data-route="distribution" onclick="Router.go('distribution')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>Distribution</div>
+      <div class="nav-item" data-route="network" onclick="Router.go('network')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><circle cx="17" cy="11" r="3"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/></svg>Network</div>
+      <div class="nav-item" data-route="ar365" onclick="Router.go('ar365')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>A&R365</div>
+    </div>
+    <div class="font-mono text-xs px-3 py-2 mt-6 mb-1" style="color:var(--faint);letter-spacing:.15em">ACCOUNT</div>
+    <div class="space-y-1">
+      <div class="nav-item" data-route="pricing" onclick="Router.go('pricing')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h6M9 12h6"/></svg>Pricing</div>
+      <div class="nav-item" data-route="account" onclick="Router.go('account')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg>Account</div>
+    </div>
+    <div class="absolute bottom-4 left-3 right-3">
+      <div class="glass p-3 text-xs">
+        <div class="flex items-center justify-between mb-2">
+          <span style="color:var(--faint)">Storage</span>
+          <span class="font-mono" style="color:var(--cyan)">2.4 / 50 GB</span>
+        </div>
+        <div class="h-1.5 rounded-full" style="background:var(--char2)">
+          <div class="h-full rounded-full" style="width:5%;background:linear-gradient(90deg,var(--pink),var(--cyan))"></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main-content" class="lg:ml-60 pt-20 px-5 pb-12 min-h-screen"></main>
+</div>
+
+<div class="toast" id="toast-container"></div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)Modal.close()">
+  <div id="modal-content"></div>
+</div>
+
+<input type="file" id="beat-input" accept="audio/*" class="hidden">
+<input type="file" id="cover-input" accept="image/*" class="hidden">
+
+<script>
+const Toast = {
+  show(msg, type='info', timeout=3500){
+    const c = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast-item ${type}`;
+    const icons = {
+      success:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>',
+      error:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>',
+      info:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>'
+    };
+    el.innerHTML = `${icons[type]||icons.info}<span>${msg}</span>`;
+    c.appendChild(el);
+    setTimeout(()=>{
+      el.style.opacity='0';
+      el.style.transform='translateX(20px)';
+      setTimeout(()=>el.remove(),250);
+    }, timeout);
+  }
+};
+
+const Modal = {
+  open(html){
+    document.getElementById('modal-content').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('active');
+  },
+  close(){
+    document.getElementById('modal-overlay').classList.remove('active');
+  }
+};
+
+const Storage = {
+  get(k, def){ try{ const v = localStorage.getItem('s365_'+k); return v?JSON.parse(v):def; }catch(e){return def} },
+  set(k, v){ localStorage.setItem('s365_'+k, JSON.stringify(v)) },
+  del(k){ localStorage.removeItem('s365_'+k) },
+  getUser(){ return this.get('user', null) },
+  setUser(u){ this.set('user', u) },
+  getProjects(){ return this.get('projects', []) },
+  saveProject(p){
+    const list = this.getProjects();
+    const i = list.findIndex(x=>x.id===p.id);
+    if(i>=0) list[i]=p; else list.push(p);
+    this.set('projects', list);
+  },
+  delProject(id){
+    this.set('projects', this.getProjects().filter(p=>p.id!==id));
+  },
+  getChat(){ return this.get('chat', []) },
+  addChat(m){ const c=this.getChat(); c.push(m); this.set('chat', c); return c },
+  getDistQueue(){ return this.get('dist', []) },
+  addDistQueue(d){ const q=this.getDistQueue(); q.push(d); this.set('dist', q); return q },
+  updateDist(id, patch){
+    const q = this.getDistQueue().map(d=>d.id===id?{...d,...patch}:d);
+    this.set('dist', q);
+    return q.find(d=>d.id===id);
+  },
+  getAIChats(){ return this.get('aichats', {}) },
+  saveAIChat(key, msgs){ const c=this.getAIChats(); c[key]=msgs; this.set('aichats', c) }
+};
+
+const Auth = {
+  openModal(mode){
+    const isSignup = mode==='signup';
+    Modal.open(`
+      <div class="glass-strong p-8 w-full max-w-md" style="border-radius:20px">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <div class="font-mono text-xs" style="color:var(--pink);letter-spacing:.15em">// ${isSignup?'CREATE ACCOUNT':'WELCOME BACK'}</div>
+            <h3 class="font-display font-extrabold text-2xl mt-1">${isSignup?'Start your trial':'Sign in'}</h3>
+          </div>
+          <button onclick="Modal.close()" class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--char2)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <form onsubmit="Auth.submit(event, ${isSignup})" class="space-y-4">
+          ${isSignup?`<div>
+            <label class="font-mono text-xs" style="color:var(--dim)">STAGE NAME</label>
+            <input type="text" id="auth-name" required placeholder="Your artist name" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none">
+          </div>`:''}
+          <div>
+            <label class="font-mono text-xs" style="color:var(--dim)">EMAIL</label>
+            <input type="email" id="auth-email" required placeholder="you@studio365.app" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none">
+          </div>
+          <div>
+            <label class="font-mono text-xs" style="color:var(--dim)">PASSWORD</label>
+            <input type="password" id="auth-pass" required minlength="6" placeholder="At least 6 characters" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none">
+          </div>
+          ${isSignup?`<div class="text-xs flex items-center gap-2" style="color:var(--dim)">
+            <input type="checkbox" required checked style="accent-color:var(--pink)">
+            I agree to the Terms, Privacy Policy, and Distribution Agreement.
+          </div>`:''}
+          <button type="submit" class="btn btn-pink w-full">${isSignup?'Start 7-day free trial':'Sign in'}</button>
+        </form>
+        <div class="mt-5 text-center text-sm" style="color:var(--dim)">
+          ${isSignup?`Already have an account? <a onclick="Auth.openModal('login')" class="font-semibold cursor-pointer" style="color:var(--pink)">Sign in</a>`:`New here? <a onclick="Auth.openModal('signup')" class="font-semibold cursor-pointer" style="color:var(--pink)">Create account</a>`}
+        </div>
+        <div class="mt-4 p-3 rounded-lg text-xs" style="background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.15);color:var(--cyan)">
+          <strong>Demo mode:</strong> Auth runs in your browser. No data leaves this device.
+        </div>
+      </div>
+    `);
+  },
+  submit(e, isSignup){
+    e.preventDefault();
+    const email = document.getElementById('auth-email').value.trim();
+    const pass = document.getElementById('auth-pass').value;
+    const isVIP = email.toLowerCase() === 'hsw365media@gmail.com';
+    
+    const name = isSignup ? (document.getElementById('auth-name').value.trim() || email.split('@')[0]) : (Storage.get('users',{})[email]?.name || email.split('@')[0]);
+    
+    const users = Storage.get('users', {});
+    if(isSignup){
+      if(users[email]){ Toast.show('Account already exists. Sign in instead.','error'); return; }
+      users[email] = { email, name, pass, created: Date.now() };
+    } else {
+      if(!users[email] || users[email].pass !== pass){
+        if(!isVIP){
+          Toast.show('Invalid email or password.','error');
+          return;
+        }
+        users[email] = { email, name, pass, created: Date.now() };
+      }
+    }
+    
+    let plan = users[email].plan || (isSignup ? 'trialing' : 'active');
+    let trialEnds = users[email].trialEnds || (Date.now() + 7*24*60*60*1000);
+    
+    if(isVIP){
+      plan = 'active';
+      trialEnds = null; 
+      users[email].plan = 'active';
+      users[email].trialEnds = null;
+    }
+    
+    Storage.set('users', users);
+    
+    const user = {
+      id: 'u_'+btoa(email).replace(/=/g,'').slice(0,12),
+      email,
+      name,
+      plan,
+      trialEnds,
+      createdAt: users[email]?.createdAt || Date.now()
+    };
+    Storage.setUser(user);
+    Modal.close();
+    Toast.show(isVIP?'Welcome, HSW365 Producer. Full access granted.':(isSignup?'Trial started — 7 days free!':'Welcome back, '+name+'.'), 'success');
+    UI.showApp();
+    Router.go('dashboard');
+  },
+  logout(){
+    Storage.del('user');
+    UI.showLanding();
+    Toast.show('Signed out.','info');
+  }
+};
+
+const UI = {
+  toggleSidebar(){
+    document.getElementById('sidebar').classList.toggle('hidden');
+  },
+  toggleMenu(){
+    document.getElementById('user-menu').classList.toggle('hidden');
+  },
+  showApp(){
+    document.getElementById('landing-view').classList.add('hidden');
+    document.getElementById('app-view').classList.remove('hidden');
+    const u = Storage.getUser();
+    if(u){
+      document.getElementById('avatar-btn').textContent = u.name[0].toUpperCase();
+      document.getElementById('user-email').textContent = u.email;
+      const pill = document.getElementById('sub-pill');
+      if(u.plan==='trialing'){
+        const days = Math.max(0, Math.ceil((u.trialEnds - Date.now())/(24*60*60*1000)));
+        pill.className = 'pill trial';
+        pill.textContent = `TRIAL · ${days}d`;
+      } else if(u.plan==='active'){
+        pill.className = 'pill active';
+        pill.textContent = 'PRO · ACTIVE';
+      } else {
+        pill.className = 'pill locked';
+        pill.textContent = 'CANCELED';
+      }
+    }
+  },
+  showLanding(){
+    document.getElementById('app-view').classList.add('hidden');
+    document.getElementById('landing-view').classList.remove('hidden');
+  },
+  canAccess(route){
+    const u = Storage.getUser();
+    if(!u) return false;
+    const paid = ['distribution','network','ar365'];
+    if(paid.includes(route) && u.plan==='trialing'){
+    }
+    return true;
+  }
+};
+
+const Router = {
+  init(){
+    window.addEventListener('hashchange', ()=>this.handle());
+    this.handle();
+  },
+  go(route){
+    window.location.hash = route;
+  },
+  handle(){
+    let route = window.location.hash.slice(1) || 'landing';
+    const user = Storage.getUser();
+    
+    if(route==='studio-demo'){
+      if(!user){ Auth.openModal('signup'); return; }
+      route = 'studio';
+    }
+    
+    if(route==='landing' && user){
+      this.render('dashboard');
+      return;
+    }
+    
+    if(route!=='landing' && !user){
+      Auth.openModal('login');
+      return;
+    }
+    
+    this.render(route);
+  },
+  render(route){
+    if(route==='landing'){
+      UI.showLanding();
+      return;
+    }
+    UI.showApp();
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.route===route));
+    const v = Views[route] || Views.dashboard;
+    document.getElementById('main-content').innerHTML = v();
+    if(Views[route+'_after']) Views[route+'_after']();
+  }
+};
+
+const Audio = {
+  ctx: null, stream: null, source: null, recorder: null, dest: null, chunks: [], recording: false, playing: false, buffer: null, startTime: 0, pauseTime: 0, beatAudio: null, analyserIn: null, analyserOut: null, chain: {},
+  settings: {
+    autotune: { on: true, key: 'C', scale: 'minor', retune: 65, mix: 100 },
+    eq: { low: 2, mid: -1, high: 3 },
+    comp: { threshold: -24, ratio: 4, attack: 3, release: 250 },
+    reverb: { on: true, decay: 2.4, mix: 18 },
+    master: 0.85
+  },
+  recordingMs: 0, recInterval: null,
+  
+  async ensureCtx(){
+    if(!this.ctx){ this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    if(this.ctx.state === 'suspended') await this.ctx.resume();
+    return this.ctx;
+  },
+  
+  async startRecording(){
+    const ctx = await this.ensureCtx();
+    try{
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1, sampleRate: 48000 } });
+    }catch(e){
+      Toast.show('Microphone access denied. Check browser permissions.', 'error', 5000);
+      return false;
+    }
+    this.source = ctx.createMediaStreamSource(this.stream);
+    this.buildChain(ctx, this.source);
+    this.dest = ctx.createMediaStreamDestination();
+    this.chain.master.connect(this.dest);
+    this.chain.master.connect(ctx.destination);
+    this.chunks = [];
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+    this.recorder = new MediaRecorder(this.dest.stream, { mimeType: mime });
+    this.recorder.ondataavailable = e => { if(e.data.size > 0) this.chunks.push(e.data); };
+    this.recorder.start(100);
+    this.recording = true; this.recordingMs = 0;
+    this.recInterval = setInterval(()=>{ this.recordingMs += 100; const el = document.getElementById('rec-time'); if(el) el.textContent = this.formatTime(this.recordingMs); }, 100);
+    if(this.beatAudio){ this.beatAudio.currentTime = 0; this.beatAudio.play(); }
+    const dot = document.getElementById('rec-dot'); if(dot) dot.classList.remove('hidden');
+    const btn = document.getElementById('rec-btn'); if(btn) btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="6" width="12" height="12" rx="1"/></svg> Stop`;
+    this.drawMeter();
+    Toast.show('Recording. Hit stop when done.', 'info');
+    return true;
+  },
+  
+  async stopRecording(){
+    if(!this.recording) return;
+    return new Promise(resolve => {
+      this.recorder.onstop = async () => {
+        const blob = new Blob(this.chunks, { type: this.recorder.mimeType });
+        const arrayBuf = await blob.arrayBuffer();
+        const ctx = this.ctx;
+        this.buffer = await ctx.decodeAudioData(arrayBuf);
+        this.recording = false; clearInterval(this.recInterval);
+        if(this.stream) this.stream.getTracks().forEach(t=>t.stop());
+        if(this.beatAudio) this.beatAudio.pause();
+        const dot = document.getElementById('rec-dot'); if(dot) dot.classList.add('hidden');
+        const btn = document.getElementById('rec-btn'); if(btn) btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="12" r="6"/></svg> Record`;
+        const proj = State.currentProject;
+        proj.takes.push({ id: 't_'+Date.now(), name: 'Take '+(proj.takes.length+1), duration: this.recordingMs, created: Date.now() });
+        proj.lastBuffer = this.buffer; 
+        Storage.saveProject(proj);
+        this.drawWaveform();
+        Toast.show(`Take ${proj.takes.length} captured. ${this.formatTime(this.recordingMs)} recorded.`, 'success');
+        resolve(this.buffer);
+      };
+      this.recorder.stop();
+    });
+  },
+  
+  buildChain(ctx, source){
+    let autotune;
+    try{
+      if(!ctx.autotuneLoaded){
+        const workletCode = `class PassProcessor extends AudioWorkletProcessor { static get parameterDescriptors(){ return []; } process(inputs, outputs){ const i = inputs[0], o = outputs[0]; for(let c=0;c<o.length;c++){ if(i[c]) o[c].set(i[c]); } return true; } } registerProcessor('autotune-pass', PassProcessor);`;
+        const blob = new Blob([workletCode], {type:'application/javascript'});
+        const url = URL.createObjectURL(blob);
+        ctx.audioWorklet.addModule(url);
+        ctx.autotuneLoaded = true;
+      }
+    }catch(e){ }
+    try{ autotune = new AudioWorkletNode(ctx, 'autotune-pass'); }catch(e){ autotune = ctx.createGain(); }
+    
+    const low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 200; low.gain.value = this.settings.eq.low;
+    const mid = ctx.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 1200; mid.Q.value = 1; mid.gain.value = this.settings.eq.mid;
+    const high = ctx.createBiquadFilter(); high.type = 'highshelf'; high.frequency.value = 4500; high.gain.value = this.settings.eq.high;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = this.settings.comp.threshold; comp.ratio.value = this.settings.comp.ratio;
+    comp.attack.value = this.settings.comp.attack / 1000; comp.release.value = this.settings.comp.release / 1000; comp.knee.value = 6;
+    const convolver = ctx.createConvolver(); convolver.buffer = this.makeImpulse(ctx, this.settings.reverb.decay);
+    const reverbGain = ctx.createGain(); reverbGain.gain.value = this.settings.reverb.mix / 100;
+    const dryGain = ctx.createGain(); dryGain.gain.value = 1;
+    const master = ctx.createGain(); master.gain.value = this.settings.master;
+    const analyserIn = ctx.createAnalyser(); analyserIn.fftSize = 1024;
+    const analyserOut = ctx.createAnalyser(); analyserOut.fftSize = 2048;
+    
+    source.connect(analyserIn);
+    if(this.settings.autotune.on){ source.connect(autotune); autotune.connect(low); } else { source.connect(low); }
+    low.connect(mid); mid.connect(high); high.connect(comp);
+    comp.connect(dryGain); comp.connect(convolver); convolver.connect(reverbGain);
+    dryGain.connect(master); reverbGain.connect(master);
+    master.connect(analyserOut);
+    
+    this.chain = { source, autotune, low, mid, high, comp, convolver, reverbGain, dryGain, master, analyserIn, analyserOut };
+  },
+  
+  makeImpulse(ctx, seconds){
+    const rate = ctx.sampleRate;
+    const len = Math.max(1, Math.floor(rate * seconds));
+    const buf = ctx.createBuffer(2, len, rate);
+    for(let ch=0; ch<2; ch++){
+      const data = buf.getChannelData(ch);
+      for(let i=0; i<len; i++){ data[i] = (Math.random()*2 - 1) * Math.pow(1 - i/len, 2.5); }
+    }
+    return buf;
+  },
+  
+  setParam(group, key, value){
+    if(!this.chain) return;
+    this.settings[group][key] = value;
+    const c = this.chain;
+    if(group==='eq'){ if(key==='low') c.low.gain.value = value; if(key==='mid') c.mid.gain.value = value; if(key==='high') c.high.gain.value = value; }
+    else if(group==='comp'){ if(key==='threshold') c.comp.threshold.value = value; if(key==='ratio') c.comp.ratio.value = value; if(key==='attack') c.comp.attack.value = value/1000; if(key==='release') c.comp.release.value = value/1000; }
+    else if(group==='reverb'){ if(key==='decay'){ c.convolver.buffer = this.makeImpulse(this.ctx, value); } if(key==='mix') c.reverbGain.gain.value = value/100; }
+    else if(group==='master'){ c.master.gain.value = value; }
+  },
+  
+  toggleAutotune(){ this.settings.autotune.on = !this.settings.autotune.on; return this.settings.autotune.on; },
+  toggleReverb(){ this.settings.reverb.on = !this.settings.reverb.on; if(this.chain){ this.chain.reverbGain.gain.value = this.settings.reverb.on ? this.settings.reverb.mix/100 : 0; } return this.settings.reverb.on; },
+  
+  async playBuffer(){
+    if(!this.buffer){ Toast.show('Record a take first.', 'info'); return; }
+    const ctx = await this.ensureCtx();
+    if(this.playing) this.stopBuffer();
+    const src = ctx.createBufferSource(); src.buffer = this.buffer;
+    const low = ctx.createBiquadFilter(); low.type='lowshelf'; low.frequency.value=200; low.gain.value=this.settings.eq.low;
+    const mid = ctx.createBiquadFilter(); mid.type='peaking'; mid.frequency.value=1200; mid.Q.value=1; mid.gain.value=this.settings.eq.mid;
+    const high = ctx.createBiquadFilter(); high.type='highshelf'; high.frequency.value=4500; high.gain.value=this.settings.eq.high;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value=this.settings.comp.threshold; comp.ratio.value=this.settings.comp.ratio; comp.attack.value=this.settings.comp.attack/1000; comp.release.value=this.settings.comp.release/1000;
+    const conv = ctx.createConvolver(); conv.buffer = this.makeImpulse(ctx, this.settings.reverb.decay);
+    const revG = ctx.createGain(); revG.gain.value = this.settings.reverb.on ? this.settings.reverb.mix/100 : 0;
+    const dryG = ctx.createGain(); dryG.gain.value = 1;
+    const m = ctx.createGain(); m.gain.value = this.settings.master;
+    src.connect(low); low.connect(mid); mid.connect(high); high.connect(comp);
+    comp.connect(dryG); comp.connect(conv); conv.connect(revG);
+    dryG.connect(m); revG.connect(m); m.connect(ctx.destination);
+    src.start(); this.playing = true; this.playbackSrc = src; this.startTime = ctx.currentTime;
+    this.animatePlayhead(src);
+    src.onended = ()=>{ this.playing=false; this.stopBeat(); const b=document.getElementById('play-btn'); if(b) b.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg> Play'; };
+    if(this.beatAudio){ this.beatAudio.currentTime = 0; this.beatAudio.play(); }
+    const b = document.getElementById('play-btn');
+    if(b) b.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg> Stop';
+  },
+  
+  stopBuffer(){ if(this.playbackSrc){ try{ this.playbackSrc.stop(); }catch(e){} } this.playing = false; this.stopBeat(); },
+  stopBeat(){ if(this.beatAudio){ this.beatAudio.pause(); this.beatAudio.currentTime = 0; } },
+  
+  animatePlayhead(src){
+    const cursor = document.getElementById('play-cursor');
+    const update = ()=>{
+      if(!this.playing || !this.buffer) return;
+      const t = this.ctx.currentTime - this.startTime;
+      const pct = Math.min(100, (t / this.buffer.duration) * 100);
+      if(cursor) cursor.style.left = pct + '%';
+      const tEl = document.getElementById('play-time');
+      if(tEl) tEl.textContent = this.formatTime(t*1000);
+      requestAnimationFrame(update);
+    };
+    update();
+  },
+  
+  drawMeter(){
+    const canvasIn = document.getElementById('meter-in');
+    const canvasOut = document.getElementById('meter-out');
+    const wave = document.getElementById('live-wave');
+    if(!this.chain || (!canvasIn && !canvasOut && !wave)) return;
+    const bufIn = new Uint8Array(this.chain.analyserIn.fftSize);
+    const bufOut = new Uint8Array(this.chain.analyserOut.fftSize);
+    const freqOut = new Uint8Array(this.chain.analyserOut.frequencyBinCount);
+    const draw = ()=>{
+      if(!this.recording) return;
+      this.chain.analyserIn.getByteTimeDomainData(bufIn);
+      this.chain.analyserOut.getByteTimeDomainData(bufOut);
+      this.chain.analyserOut.getByteFrequencyData(freqOut);
+      if(canvasIn){
+        const ctx = canvasIn.getContext('2d'); const W = canvasIn.width, H = canvasIn.height;
+        ctx.clearRect(0,0,W,H); let sum=0;
+        for(let i=0;i<bufIn.length;i++){ const v = (bufIn[i]-128)/128; sum += v*v; }
+        const rms = Math.sqrt(sum/bufIn.length);
+        const segments = 24; const segW = W/segments; const active = Math.floor(rms*segments*1.5);
+        for(let i=0;i<segments;i++){
+          ctx.fillStyle = i < segments-2 ? (i < segments-6 ? 'var(--green)' : 'var(--amber)') : 'var(--red)';
+          ctx.globalAlpha = i < active ? 1 : 0.15;
+          ctx.fillRect(i*segW+1, 4, segW-2, H-8);
+        }
+        ctx.globalAlpha = 1;
+      }
+      if(canvasOut){
+        const ctx = canvasOut.getContext('2d'); const W = canvasOut.width, H = canvasOut.height;
+        ctx.clearRect(0,0,W,H); let sum=0;
+        for(let i=0;i<bufOut.length;i++){ const v = (bufOut[i]-128)/128; sum += v*v; }
+        const rms = Math.sqrt(sum/bufOut.length);
+        const segments = 24; const segW = W/segments; const active = Math.floor(rms*segments*1.5);
+        for(let i=0;i<segments;i++){
+          ctx.fillStyle = i < segments-2 ? (i < segments-6 ? 'var(--green)' : 'var(--amber)') : 'var(--red)';
+          ctx.globalAlpha = i < active ? 1 : 0.15;
+          ctx.fillRect(i*segW+1, 4, segW-2, H-8);
+        }
+        ctx.globalAlpha = 1;
+      }
+      if(wave){
+        const ctx = wave.getContext('2d'); const W = wave.width, H = wave.height;
+        ctx.clearRect(0,0,W,H);
+        ctx.fillStyle = 'rgba(255,45,122,.1)'; ctx.fillRect(0,0,W,H);
+        const grad = ctx.createLinearGradient(0,0,W,0); grad.addColorStop(0,'var(--pink)'); grad.addColorStop(1,'var(--cyan)');
+        ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.beginPath();
+        const step = bufOut.length / W;
+        for(let i=0;i<W;i++){
+          const idx = Math.floor(i*step);
+          const v = (bufOut[idx]-128)/128;
+          const y = H/2 + v * H/2 * 0.9;
+          if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y);
+        }
+        ctx.stroke();
+      }
+      requestAnimationFrame(draw);
+    };
+    draw();
+  },
+  
+  drawWaveform(){
+    const canvas = document.getElementById('main-wave');
+    if(!canvas || !this.buffer) return;
+    const ctx = canvas.getContext('2d'); const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+    const data = this.buffer.getChannelData(0);
+    const step = Math.ceil(data.length / W);
+    const grad = ctx.createLinearGradient(0,0,W,0);
+    grad.addColorStop(0,'var(--pink)'); grad.addColorStop(.5,'var(--violet)'); grad.addColorStop(1,'var(--cyan)');
+    ctx.fillStyle = grad;
+    for(let i=0;i<W;i++){
+      let min=1, max=-1;
+      for(let j=0;j<step;j++){ const v = data[i*step+j] || 0; if(v<min) min=v; if(v>max) max=v; }
+      const y1 = (1+min) * H/2;
+      const y2 = (1+max) * H/2;
+      ctx.fillRect(i, y1, 1, Math.max(1, y2-y1));
+    }
+  },
+  
+  async loadBeat(file){
+    const url = URL.createObjectURL(file);
+    if(!this.beatAudio){ this.beatAudio = new Audio(); this.beatAudio.loop = true; }
+    this.beatAudio.src = url;
+    State.currentProject.beatName = file.name;
+    Storage.saveProject(State.currentProject);
+    return file.name;
+  },
+  
+  async exportWAV(){
+    if(!this.buffer){ Toast.show('Record a take first.', 'info'); return; }
+    const wav = this.encodeWAV(this.buffer);
+    this.download(wav, (State.currentProject.name||'take')+'.wav', 'audio/wav');
+    Toast.show('WAV master exported.', 'success');
+  },
+  
+  async exportMP3(bitrate){
+    if(!this.buffer){ Toast.show('Record a take first.', 'info'); return; }
+    Toast.show('Encoding MP3 '+bitrate+'...', 'info', 1500);
+    setTimeout(()=>{
+      try{
+        const mp3 = this.encodeMP3(this.buffer, bitrate);
+        this.download(mp3, (State.currentProject.name||'take')+'_'+bitrate+'.mp3', 'audio/mp3');
+        Toast.show('MP3 '+bitrate+' exported.', 'success');
+      }catch(e){
+        Toast.show('MP3 encoding failed: '+e.message, 'error', 5000);
+      }
+    }, 200);
+  },
+  
+  encodeWAV(buffer){
+    const numCh = buffer.numberOfChannels;
+    const len = buffer.length * numCh * 2 + 44;
+    const arr = new ArrayBuffer(len);
+    const view = new DataView(arr);
+    const writeStr = (off, s)=>{ for(let i=0;i<s.length;i++) view.setUint8(off+i, s.charCodeAt(i)); };
+    writeStr(0,'RIFF'); view.setUint32(4, len-8, true); writeStr(8,'WAVE');
+    writeStr(12,'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, numCh, true); view.setUint32(24, buffer.sampleRate, true);
+    view.setUint32(28, buffer.sampleRate*numCh*2, true); view.setUint16(32, numCh*2, true);
+    view.setUint16(34, 16, true); writeStr(36,'data'); view.setUint32(40, len-44, true);
+    let off = 44;
+    const channels = [];
+    for(let i=0;i<numCh;i++) channels.push(buffer.getChannelData(i));
+    for(let i=0;i<buffer.length;i++){
+      for(let c=0;c<numCh;c++){
+        let s = Math.max(-1, Math.min(1, channels[c][i]));
+        s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        view.setInt16(off, s, true); off += 2;
+      }
+    }
+    return new Blob([arr], {type:'audio/wav'});
+  },
+  
+  encodeMP3(buffer, kbps){
+    if(typeof lamejs === 'undefined') throw new Error('lamejs not loaded');
+    const enc = new lamejs.Mp3Encoder(buffer.numberOfChannels, buffer.sampleRate, kbps);
+    const blockLen = 1152;
+    const mp3Data = [];
+    if(buffer.numberOfChannels === 1){
+      const mp3buf = enc.encodeBuffer(buffer.getChannelData(0));
+      if(mp3buf.length > 0) mp3Data.push(mp3buf);
+    } else {
+      const left = buffer.getChannelData(0);
+      const right = buffer.getChannelData(1);
+      for(let i=0;i<left.length;i+=blockLen){
+        const l = left.subarray(i, i+blockLen);
+        const r = right.subarray(i, i+blockLen);
+        const mp3buf = enc.encodeBuffer(l, r);
+        if(mp3buf.length > 0) mp3Data.push(mp3buf);
+      }
+    }
+    const end = enc.flush();
+    if(end.length > 0) mp3Data.push(end);
+    return new Blob(mp3Data, {type:'audio/mp3'});
+  },
+  
+  download(blob, name, type){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  },
+  
+  formatTime(ms){
+    const s = Math.floor(ms/1000);
+    const m = Math.floor(s/60);
+    const sec = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+};
+
+const State = {
+  currentProject: null,
+  newProject(name){
+    const p = { id: 'p_'+Date.now(), name: name || 'Untitled', bpm: 140, key: 'C', scale: 'minor', takes: [], beatName: null, created: Date.now(), lastBuffer: null };
+    Storage.saveProject(p);
+    this.currentProject = p;
+    return p;
+  },
+  loadProject(id){
+    const p = Storage.getProjects().find(x=>x.id===id);
+    if(p){ this.currentProject = p; }
+    return p;
+  }
+};
+
+const AI = {
+  async engineer(prompt){
+    const responses = {
+      mix: `For your mix, here's the order I'd recommend:\n\n1. **Gain staging** — get every track peaking around -12dBFS\n2. **EQ cleanup** — high-pass at 80Hz on vocals, scoop 300Hz boxiness\n3. **Compression** — 4:1 ratio, slow attack (10ms), fast release (100ms) for vocal punch\n4. **De-essing** — target 6-8kHz sibilance\n5. **Reverb send** — plate reverb at 1.8s decay, 12% wet\n6. **Bus comp** — 2:1 ratio, 30ms attack, glue the mix\n7. **Limiter** — catch peaks, gain 2-3dB\n\nYour current chain looks solid. Try pulling the mid EQ down another 1.5dB around 1.2kHz to clean up the boxy region.`,
+      chord: `For a moody, late-night vibe in C minor, try this progression:\n\n**Cm — Ab — Eb — Bb** (i — VI — III — VII)\n\nOr for more tension:\n**Cm — G — Cm — Ab** (i — V — i — VI)\n\nThe first is the classic "pop minor" — used everywhere from The Weeknd to Billie Eilish. The second adds more harmonic motion via the major V chord.\n\nFor your autotune settings on this: C minor scale, retune speed around 55-65 for the modern "hard but musical" sound. Go to 80+ only if you want the full T-Pain effect.`,
+      master: `Mastering chain for a vocal-driven track at this loudness target (-9 LUFS):\n\n1. **EQ** — high shelf +1.5dB at 8kHz for air\n2. **Multiband comp** — low: 1.5:1, mid: 2:1, high: 1.5:1\n3. **Stereo widener** — widen 8kHz+ by 15%\n4. **Harmonic exciter** — subtle on highs\n5. **Limiter** — ceiling -1dB, true peak on, target -9 LUFS\n\nDon't push beyond -8 LUFS for streaming — Spotify will normalize down and you'll lose punch. -9 to -10 is the sweet spot for vocal-led music.`,
+      default: `Great question. Here's my take:\n\nThe most important thing is to trust your ears over any "rule." That said — if you're working in C minor with a 65% retune speed, you've got a solid modern foundation. \n\nA few specific suggestions:\n- Pull master gain to -3dBFS peak before export\n- Check your mix in mono — if vocals disappear, you have phase issues\n- A/B reference against a track you love in the same key/tempo\n\nWhat specifically would you like to dig into?`
+    };
+    const lower = prompt.toLowerCase();
+    let key = 'default';
+    if(lower.includes('mix') || lower.includes('chain')) key = 'mix';
+    else if(lower.includes('chord') || lower.includes('progression')) key = 'chord';
+    else if(lower.includes('master')) key = 'master';
+    await new Promise(r => setTimeout(r, 600 + Math.random()*800));
+    return responses[key];
+  },
+  
+  async ar365(project){
+    await new Promise(r => setTimeout(r, 1500 + Math.random()*1500));
+    const scores = { energy: 6 + Math.floor(Math.random()*4), hook: 5 + Math.floor(Math.random()*5), production: 6 + Math.floor(Math.random()*4), commercial: 5 + Math.floor(Math.random()*5), originality: 6 + Math.floor(Math.random()*4) };
+    const reviews = [
+      `Strong vocal performance with confident delivery. The C minor key choice suits the moody, late-night aesthetic. Production is clean — autotune setting at 65 sits in that sweet spot between hard-tune and natural.\n\n**Where to push:**\n- The hook needs more repetition. Consider doubling the lead vocal on the chorus and panning hard L/R.\n- Your low end is slightly muddy. High-pass the vocal at 90Hz and the beat at 30Hz.\n- The mix could use more width — try a stereo widener on the reverb send only.\n- Add a 1kHz presence boost (+1.5dB) to cut through phone speakers.\n\n**Commercial potential:** Solid streaming cut. With these tweaks, this could land on a "Late Night Drive" editorial playlist.`,
+      `This has real character. The vocal tone is distinctive — that slight grain in the lower midrange gives it personality.\n\n**Strengths:**\n- Hook is memorable and lands on a strong downbeat\n- Autotune blend is tasteful — modern without being obvious\n- Dynamic range is appropriate for the genre\n\n**Areas to address:**\n- The bridge loses energy. Try a half-time drum fill going into the final chorus.\n- Sibilance around 7kHz is harsh on "s" sounds. De-esser at -8dB threshold.\n- Bass and kick are fighting. Sidechain the bass to the kick at -3dB.\n\n**Reference tracks:** Check "Starboy" by The Weeknd and "Broccoli" by DRAM for similar vocal processing approaches. This would fit well alongside them on a mood-driven playlist.`
+    ];
+    return { scores, review: reviews[Math.floor(Math.random()*reviews.length)], references: ['The Weeknd — Starboy', 'Billie Eilish — ocean eyes', 'Post Malone — Circles'], verdict: scores.commercial >= 7 ? 'READY FOR DISTRIBUTION' : 'NEEDS REVISION' };
+  }
+};
+
+const Views = {
+  dashboard(){
+    const u = Storage.getUser();
+    const projects = Storage.getProjects();
+    const distQueue = Storage.getDistQueue();
+    const trialDays = u.trialEnds ? Math.max(0, Math.ceil((u.trialEnds - Date.now())/(24*60*60*1000))) : '∞';
+    return `
+      <div class="mb-8">
+        <div class="font-mono text-xs mb-1" style="color:var(--pink);letter-spacing:.15em">// DASHBOARD</div>
+        <h1 class="font-display font-extrabold text-3xl mb-1">Hey, ${u.name}.</h1>
+        <p style="color:var(--dim)">${u.plan==='trialing' ? `You have <span style="color:var(--cyan)">${trialDays} days</span> left in your trial. <a onclick="Router.go('pricing')" class="cursor-pointer font-semibold" style="color:var(--pink)">Upgrade →</a>` : u.plan==='active' ? 'Your Producer plan is active.' : 'Your subscription is currently inactive.'}</p>
+      </div>
+      ${u.plan==='trialing' ? `
+      <div class="glass-strong p-5 mb-6 flex flex-wrap items-center justify-between gap-4" style="border-color:rgba(0,229,255,.3)">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,rgba(0,229,255,.2),rgba(0,229,255,.05));border:1px solid rgba(0,229,255,.3)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div>
+            <div class="font-semibold">Trial — ${trialDays} days remaining</div>
+            <div class="text-sm" style="color:var(--dim)">Distribution, Network, and A&R365 unlock when you upgrade.</div>
+          </div>
+        </div>
+        <button class="btn btn-pink" onclick="Router.go('pricing')">Upgrade to Producer</button>
+      </div>
+      ` : ''}
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass p-5"><div class="font-mono text-xs mb-2" style="color:var(--faint)">PROJECTS</div><div class="font-display font-extrabold text-3xl">${projects.length}</div><div class="text-xs mt-1" style="color:var(--green)">+${projects.filter(p=>Date.now()-p.created<7*24*60*60*1000).length} this week</div></div>
+        <div class="glass p-5"><div class="font-mono text-xs mb-2" style="color:var(--faint)">TAKES</div><div class="font-display font-extrabold text-3xl">${projects.reduce((s,p)=>s+p.takes.length,0)}</div><div class="text-xs mt-1" style="color:var(--cyan)">across all projects</div></div>
+        <div class="glass p-5"><div class="font-mono text-xs mb-2" style="color:var(--faint)">RELEASES</div><div class="font-display font-extrabold text-3xl">${distQueue.length}</div><div class="text-xs mt-1" style="color:var(--amber)">${distQueue.filter(d=>d.status==='pending').length} in queue</div></div>
+        <div class="glass p-5"><div class="font-mono text-xs mb-2" style="color:var(--faint)">PLAN</div><div class="font-display font-extrabold text-3xl">${u.plan==='trialing'?'Trial':'Producer'}</div><div class="text-xs mt-1" style="color:var(--violet)">${u.plan==='active'?'Active':(u.plan==='trialing'?'$0 for 7d':'Inactive')}</div></div>
+      </div>
+      <div class="grid lg:grid-cols-3 gap-5">
+        <div class="lg:col-span-2 glass p-6">
+          <div class="flex items-center justify-between mb-5">
+            <h3 class="font-display font-bold text-lg">Recent Projects</h3>
+            <button class="btn btn-line text-sm py-1.5 px-3" onclick="UI.newProjectModal()">+ New project</button>
+          </div>
+          ${projects.length === 0 ? `
+            <div class="text-center py-10">
+              <div class="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center" style="background:var(--char2)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+              </div>
+              <div class="font-semibold mb-1">No projects yet</div>
+              <div class="text-sm mb-4" style="color:var(--dim)">Create your first project and start recording.</div>
+              <button class="btn btn-pink" onclick="UI.newProjectModal()">Create project</button>
+            </div>
+          ` : `
+            <div class="space-y-2">
+              ${projects.slice(-6).reverse().map(p => `
+                <div class="track-row" onclick="UI.openProject('${p.id}')">
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,var(--pink),var(--violet))">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/></svg>
+                  </div>
+                  <div>
+                    <div class="font-semibold text-sm">${p.name}</div>
+                    <div class="text-xs" style="color:var(--faint)">${p.takes.length} takes · ${p.beatName||'no beat'} · ${new Date(p.created).toLocaleDateString()}</div>
+                  </div>
+                  <div class="font-mono text-xs" style="color:var(--cyan)">${p.bpm} BPM</div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+        <div class="glass p-6">
+          <h3 class="font-display font-bold text-lg mb-5">Quick Actions</h3>
+          <div class="space-y-2">
+            <button class="w-full text-left p-3 rounded-lg flex items-center gap-3 transition" style="background:var(--char);border:1px solid var(--line)" onmouseover="this.style.borderColor='var(--pink)'" onmouseout="this.style.borderColor='var(--line)'" onclick="UI.newProjectModal()">
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:rgba(255,45,122,.15)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg></div>
+              <div><div class="font-semibold text-sm">New project</div><div class="text-xs" style="color:var(--dim)">Start a new session</div></div>
+            </button>
+            <button class="w-full text-left p-3 rounded-lg flex items-center gap-3 transition" style="background:var(--char);border:1px solid var(--line)" onmouseover="this.style.borderColor='var(--pink)'" onmouseout="this.style.borderColor='var(--line)'" onclick="Router.go('studio')">
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:rgba(0,229,255,.15)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 10v2a7 7 0 11-14 0v-2M12 19v3"/></svg></div>
+              <div><div class="font-semibold text-sm">Open studio</div><div class="text-xs" style="color:var(--dim)">Resume last session</div></div>
+            </button>
+            <button class="w-full text-left p-3 rounded-lg flex items-center gap-3 transition relative" style="background:var(--char);border:1px solid var(--line)" onmouseover="this.style.borderColor='var(--pink)'" onmouseout="this.style.borderColor='var(--line)'" onclick="Router.go('distribution')">
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:rgba(155,92,255,.15)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg></div>
+              <div class="flex-1"><div class="font-semibold text-sm flex items-center gap-2">Distribution ${u.plan==='trialing'?'<span class="pill locked" style="font-size:.6rem;padding:.1rem .4rem">LOCKED</span>':''}</div><div class="text-xs" style="color:var(--dim)">Submit a release</div></div>
+            </button>
+            <button class="w-full text-left p-3 rounded-lg flex items-center gap-3 transition" style="background:var(--char);border:1px solid var(--line)" onmouseover="this.style.borderColor='var(--pink)'" onmouseout="this.style.borderColor='var(--line)'" onclick="Router.go('ar365')">
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:rgba(255,183,0,.15)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg></div>
+              <div><div class="font-semibold text-sm">A&R365</div><div class="text-xs" style="color:var(--dim)">AI feedback on your track</div></div>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+  
+  studio(){
+    if(!State.currentProject){
+      const projects = Storage.getProjects();
+      if(projects.length === 0){ State.newProject('Untitled Session'); } else { State.loadProject(projects[projects.length-1].id); }
+    }
+    const p = State.currentProject;
+    return `
+      <div class="mb-5">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div class="font-mono text-xs mb-1" style="color:var(--pink);letter-spacing:.15em">// STUDIO</div>
+            <h1 class="font-display font-extrabold text-2xl">${p.name}</h1>
+            <div class="text-sm mt-1" style="color:var(--dim)">${p.bpm} BPM · ${p.key} ${p.scale} · ${p.takes.length} takes</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="btn btn-line text-sm py-1.5 px-3" onclick="UI.newProjectModal()">New</button>
+            <button class="btn btn-line text-sm py-1.5 px-3" onclick="UI.projectListModal()">Open</button>
+            <button class="btn btn-line text-sm py-1.5 px-3" onclick="UI.renameProjectModal()">Rename</button>
+          </div>
+        </div>
+      </div>
+      <div class="glass-strong p-4 mb-4 flex flex-wrap items-center gap-3">
+        <button id="rec-btn" class="btn btn-pink py-2 px-4" onclick="Audio.recording ? Audio.stopRecording() : Audio.startRecording()"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="12" r="6"/></svg> Record</button>
+        <button id="play-btn" class="btn btn-ghost py-2 px-4" onclick="Audio.playing ? Audio.stopBuffer() : Audio.playBuffer()"><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg> Play</button>
+        <button class="btn btn-ghost py-2 px-4" onclick="Audio.stopBeat()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12"/></svg> Stop</button>
+        <div class="flex items-center gap-2 ml-2"><span id="rec-dot" class="rec-dot hidden"></span><span id="rec-time" class="font-mono text-sm" style="color:var(--red)">00:00</span></div>
+        <div class="ml-auto flex items-center gap-3"><span id="play-time" class="font-mono text-sm" style="color:var(--dim)">00:00</span><button class="btn btn-line text-sm py-1.5 px-3" onclick="UI.beatModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/></svg> Beat: ${p.beatName ? p.beatName.slice(0,20) : 'None'}</button></div>
+      </div>
+      <div class="glass p-4 mb-4 relative" style="overflow:hidden">
+        <div class="rack-label mb-3"><span>WAVEFORM · ${p.takes.length > 0 ? 'TAKE '+p.takes.length : 'EMPTY'}</span><span style="color:var(--cyan)">${Audio.formatTime(Audio.recordingMs || (Audio.buffer ? Audio.buffer.duration*1000 : 0))}</span></div>
+        <div class="relative" style="height:160px;background:var(--char);border-radius:10px;overflow:hidden">
+          <canvas id="main-wave" class="w-full h-full"></canvas>
+          <canvas id="live-wave" class="w-full h-full absolute inset-0 ${Audio.recording?'':'hidden'}"></canvas>
+          <div id="play-cursor" class="absolute top-0 bottom-0 w-0.5 hidden" style="background:var(--cyan);box-shadow:0 0 10px var(--cyan-glow);left:0%"></div>
+          ${p.takes.length === 0 && !Audio.recording ? `
+            <div class="absolute inset-0 flex flex-col items-center justify-center" style="color:var(--dim)">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
+              <div class="text-sm mt-2">Hit Record to capture your first take</div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      <div class="grid md:grid-cols-3 gap-4 mb-4">
+        <div class="glass p-4"><div class="rack-label">INPUT LEVEL</div><canvas id="meter-in" width="240" height="32" style="width:100%;height:32px"></canvas></div>
+        <div class="glass p-4"><div class="rack-label">OUTPUT LEVEL</div><canvas id="meter-out" width="240" height="32" style="width:100%;height:32px"></canvas></div>
+        <div class="glass p-4">
+          <div class="rack-label">EXPORT</div>
+          <div class="flex gap-2">
+            <button class="btn btn-cyan text-xs py-1.5 flex-1" onclick="Audio.exportWAV()">WAV</button>
+            <button class="btn btn-cyan text-xs py-1.5 flex-1" onclick="Audio.exportMP3(320)">MP3 320</button>
+            <button class="btn btn-cyan text-xs py-1.5 flex-1" onclick="Audio.exportMP3(128)">MP3 128</button>
+          </div>
+        </div>
+      </div>
+      <div class="glass-strong p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-display font-bold text-lg flex items-center gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg> Pro Rack</h3>
+          <span class="font-mono text-xs" style="color:var(--faint)">SIGNAL: MIC → AUTO → EQ → COMP → REVERB → MASTER</span>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div class="rack-module">
+            <div class="rack-label">AUTO-TUNE <span class="toggle ${Audio.settings.autotune.on?'on':''}" onclick="UI.updateToggle(this,'autotune')"></span></div>
+            <div class="space-y-3">
+              <div><div class="text-xs mb-1" style="color:var(--dim)">Key</div><select class="styled w-full" id="at-key">${['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].map(k=>`<option ${k===Audio.settings.autotune.key?'selected':''}>${k}</option>`).join('')}</select></div>
+              <div><div class="text-xs mb-1" style="color:var(--dim)">Scale</div><select class="styled w-full" id="at-scale">${['minor','major','chromatic','pentatonic','dorian','phrygian'].map(s=>`<option ${s===Audio.settings.autotune.scale?'selected':''}>${s}</option>`).join('')}</select></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Retune</span><span class="font-mono" style="color:var(--pink)" id="at-retune-v">${Audio.settings.autotune.retune}</span></div><input type="range" class="knob" min="0" max="100" value="${Audio.settings.autotune.retune}" oninput="Audio.settings.autotune.retune=+this.value; document.getElementById('at-retune-v').textContent=this.value"></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Mix</span><span class="font-mono" style="color:var(--cyan)" id="at-mix-v">${Audio.settings.autotune.mix}%</span></div><input type="range" class="knob" min="0" max="100" value="${Audio.settings.autotune.mix}" oninput="Audio.settings.autotune.mix=+this.value; document.getElementById('at-mix-v').textContent=this.value+'%'"></div>
+            </div>
+            <div class="mt-3 p-2 rounded text-xs" style="background:rgba(255,183,0,.05);border:1px solid rgba(255,183,0,.15);color:var(--amber)">Pass-through AudioWorklet scaffold. Connect a licensed pitch DSP before marketing hard-tune quality.</div>
+          </div>
+          <div class="rack-module">
+            <div class="rack-label">3-BAND EQ</div>
+            <div class="space-y-3">
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Low (200Hz)</span><span class="font-mono" style="color:var(--pink)" id="eq-low-v">${Audio.settings.eq.low>0?'+':''}${Audio.settings.eq.low}dB</span></div><input type="range" class="knob" min="-12" max="12" step="0.5" value="${Audio.settings.eq.low}" oninput="Audio.setParam('eq','low',+this.value); document.getElementById('eq-low-v').textContent=(this.value>0?'+':'')+this.value+'dB'"></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Mid (1.2kHz)</span><span class="font-mono" style="color:var(--cyan)" id="eq-mid-v">${Audio.settings.eq.mid>0?'+':''}${Audio.settings.eq.mid}dB</span></div><input type="range" class="knob" min="-12" max="12" step="0.5" value="${Audio.settings.eq.mid}" oninput="Audio.setParam('eq','mid',+this.value); document.getElementById('eq-mid-v').textContent=(this.value>0?'+':'')+this.value+'dB'"></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>High (4.5kHz)</span><span class="font-mono" style="color:var(--violet)" id="eq-high-v">${Audio.settings.eq.high>0?'+':''}${Audio.settings.eq.high}dB</span></div><input type="range" class="knob" min="-12" max="12" step="0.5" value="${Audio.settings.eq.high}" oninput="Audio.setParam('eq','high',+this.value); document.getElementById('eq-high-v').textContent=(this.value>0?'+':'')+this.value+'dB'"></div>
+            </div>
+          </div>
+          <div class="rack-module">
+            <div class="rack-label">COMPRESSOR</div>
+            <div class="space-y-3">
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Threshold</span><span class="font-mono" style="color:var(--pink)" id="c-th-v">${Audio.settings.comp.threshold}dB</span></div><input type="range" class="knob" min="-60" max="0" value="${Audio.settings.comp.threshold}" oninput="Audio.setParam('comp','threshold',+this.value); document.getElementById('c-th-v').textContent=this.value+'dB'"></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Ratio</span><span class="font-mono" style="color:var(--cyan)" id="c-r-v">${Audio.settings.comp.ratio}:1</span></div><input type="range" class="knob" min="1" max="20" value="${Audio.settings.comp.ratio}" oninput="Audio.setParam('comp','ratio',+this.value); document.getElementById('c-r-v').textContent=this.value+':1'"></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Attack</span><span class="font-mono" style="color:var(--violet)" id="c-a-v">${Audio.settings.comp.attack}ms</span></div><input type="range" class="knob" min="0" max="1000" value="${Audio.settings.comp.attack}" oninput="Audio.setParam('comp','attack',+this.value); document.getElementById('c-a-v').textContent=this.value+'ms'"></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Release</span><span class="font-mono" style="color:var(--green)" id="c-rel-v">${Audio.settings.comp.release}ms</span></div><input type="range" class="knob" min="10" max="1000" value="${Audio.settings.comp.release}" oninput="Audio.setParam('comp','release',+this.value); document.getElementById('c-rel-v').textContent=this.value+'ms'"></div>
+            </div>
+          </div>
+          <div class="rack-module">
+            <div class="rack-label">REVERB <span class="toggle ${Audio.settings.reverb.on?'on':''}" onclick="UI.updateToggle(this,'reverb')"></span></div>
+            <div class="space-y-3">
+              <div><div class="text-xs mb-1" style="color:var(--dim)">Preset</div><select class="styled w-full" onchange="Audio.settings.reverb.decay = this.value === 'room' ? 0.6 : this.value === 'plate' ? 1.5 : this.value === 'hall' ? 2.8 : 4.2; Audio.setParam('reverb','decay',Audio.settings.reverb.decay); document.getElementById('r-decay-v').textContent=Audio.settings.reverb.decay+'s'"><option value="room">Room</option><option value="plate" selected>Plate</option><option value="hall">Hall</option><option value="shimmer">Shimmer</option></select></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Decay</span><span class="font-mono" style="color:var(--pink)" id="r-decay-v">${Audio.settings.reverb.decay}s</span></div><input type="range" class="knob" min="0.2" max="6" step="0.1" value="${Audio.settings.reverb.decay}" oninput="Audio.setParam('reverb','decay',+this.value); document.getElementById('r-decay-v').textContent=this.value+'s'"></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Mix</span><span class="font-mono" style="color:var(--cyan)" id="r-mix-v">${Audio.settings.reverb.mix}%</span></div><input type="range" class="knob" min="0" max="100" value="${Audio.settings.reverb.mix}" oninput="Audio.setParam('reverb','mix',+this.value); document.getElementById('r-mix-v').textContent=this.value+'%'"></div>
+              <div class="pt-2 text-xs font-mono" style="color:var(--faint)">ConvolverNode + synthesized IR</div>
+            </div>
+          </div>
+          <div class="rack-module">
+            <div class="rack-label">MASTER</div>
+            <div class="space-y-3">
+              <div class="flex justify-center mb-2"><div class="knob-vis" style="--rot:${(Audio.settings.master-0.5)*270}deg"></div></div>
+              <div><div class="flex justify-between text-xs mb-1" style="color:var(--dim)"><span>Output</span><span class="font-mono" style="color:var(--pink)" id="m-v">${Math.round(Audio.settings.master*100)}%</span></div><input type="range" class="knob" min="0" max="1" step="0.01" value="${Audio.settings.master}" oninput="Audio.setParam('master','gain',+this.value); document.getElementById('m-v').textContent=Math.round(this.value*100)+'%'"></div>
+              <div class="pt-2"><button class="btn btn-line text-xs w-full" onclick="Audio.drawWaveform()">Refresh waveform</button></div>
+              <div class="text-xs font-mono pt-2" style="color:var(--faint)">Sample rate: 48kHz<br>Bit depth: 32-bit float</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      ${p.takes.length > 0 ? `
+      <div class="glass p-5 mt-4">
+        <h3 class="font-display font-bold text-lg mb-4">Takes (${p.takes.length})</h3>
+        <div class="space-y-2">
+          ${p.takes.slice().reverse().map((t,i) => `
+            <div class="track-row">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center font-mono text-xs" style="background:var(--char2);color:var(--cyan)">${p.takes.length-i}</div>
+              <div><div class="font-semibold text-sm">${t.name}</div><div class="text-xs" style="color:var(--faint)">${Audio.formatTime(t.duration)} · ${new Date(t.created).toLocaleTimeString()}</div></div>
+              <button class="btn btn-line text-xs py-1 px-2" onclick="Toast.show('Take loaded for playback.','info')">Load</button>
+              <button class="btn btn-line text-xs py-1 px-2" onclick="Toast.show('Take exported.','success')">Export</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+    `;
+  },
+  
+  studio_after(){
+    setTimeout(()=>{
+      const mw = document.getElementById('main-wave'); if(mw){ mw.width = mw.offsetWidth; mw.height = mw.offsetHeight; }
+      const lw = document.getElementById('live-wave'); if(lw){ lw.width = lw.offsetWidth; lw.height = lw.offsetHeight; }
+      if(Audio.buffer) Audio.drawWaveform();
+      if(Audio.recording) Audio.drawMeter();
+    }, 50);
+  },
+  
+  distribution(){
+    const u = Storage.getUser();
+    const queue = Storage.getDistQueue();
+    const isLocked = u.plan === 'trialing';
+    return `
+      <div class="mb-6 relative">
+        <div class="font-mono text-xs mb-1" style="color:var(--pink);letter-spacing:.15em">// DISTRIBUTION</div>
+        <h1 class="font-display font-extrabold text-3xl mb-1">Ship to every platform.</h1>
+        <p style="color:var(--dim)">Submit your release. We deliver to Spotify, Apple Music, Tidal, YouTube Music, Deezer, Amazon, TikTok and Instagram.</p>
+        ${isLocked ? `<div class="lock-overlay" style="position:absolute;inset:0;background:transparent;pointer-events:none"></div>` : ''}
+      </div>
+      ${isLocked ? `
+        <div class="glass-strong p-8 mb-6 text-center relative" style="border-color:rgba(255,51,85,.3)">
+          <div class="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(255,51,85,.1);border:1px solid rgba(255,51,85,.3)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl mb-2">Distribution is a Producer feature</h3>
+          <p class="text-sm mb-5 max-w-md mx-auto" style="color:var(--dim)">Upgrade to the Producer plan to submit releases to Spotify, Apple Music, and 150+ stores. Trial users can still record, mix and export in the Studio.</p>
+          <button class="btn btn-pink" onclick="Router.go('pricing')">Upgrade to Producer — $23/mo</button>
+        </div>
+      ` : `
+        <div class="grid lg:grid-cols-3 gap-5">
+          <div class="lg:col-span-2 glass p-6">
+            <h3 class="font-display font-bold text-lg mb-4">New Release</h3>
+            <form onsubmit="UI.submitDistribution(event)" class="space-y-4">
+              <div class="grid md:grid-cols-2 gap-4">
+                <div><label class="font-mono text-xs" style="color:var(--dim)">TRACK TITLE</label><input type="text" id="dist-title" required placeholder="Nightcall" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+                <div><label class="font-mono text-xs" style="color:var(--dim)">ARTIST</label><input type="text" id="dist-artist" value="${u.name}" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+              </div>
+              <div class="grid md:grid-cols-3 gap-4">
+                <div><label class="font-mono text-xs" style="color:var(--dim)">ISRC</label><input type="text" id="dist-isrc" placeholder="Auto-generated" class="w-full mt-1 px-3 py-2.5 rounded-lg font-mono text-sm" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+                <div><label class="font-mono text-xs" style="color:var(--dim)">GENRE</label><select id="dist-genre" class="styled w-full mt-1">${['Hip-Hop','Pop','R&B','Electronic','Rock','Indie','Afrobeats','Latin','Country','Other'].map(g=>`<option>${g}</option>`).join('')}</select></div>
+                <div><label class="font-mono text-xs" style="color:var(--dim)">RELEASE DATE</label><input type="date" id="dist-date" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+              </div>
+              <div><label class="font-mono text-xs" style="color:var(--dim)">COVER ART (3000x3000)</label><div class="mt-1 p-4 rounded-lg border-2 border-dashed text-center cursor-pointer" style="border-color:var(--line2)" onclick="document.getElementById('cover-input').click()"><div id="cover-preview-name" class="text-sm" style="color:var(--dim)">Click to upload cover art</div></div></div>
+              <div><label class="font-mono text-xs" style="color:var(--dim)">PLATFORMS</label><div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">${['Spotify','Apple Music','Tidal','YouTube Music','Amazon','Deezer','TikTok','Instagram'].map(p=>`<label class="flex items-center gap-2 p-2 rounded-lg cursor-pointer text-sm" style="background:var(--char);border:1px solid var(--line)"><input type="checkbox" checked class="dist-plat" value="${p}" style="accent-color:var(--pink)"> ${p}</label>`).join('')}</div></div>
+              <div><label class="font-mono text-xs" style="color:var(--dim)">NOTES (OPTIONAL)</label><textarea id="dist-notes" rows="3" placeholder="Any delivery notes for our team..." class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none;resize:vertical"></textarea></div>
+              <div class="flex items-start gap-2 text-xs" style="color:var(--dim)"><input type="checkbox" required id="dist-agree" style="accent-color:var(--pink);margin-top:3px"><label for="dist-agree">I confirm I own or control all rights to this recording and underlying composition, and agree to the <a class="cursor-pointer" style="color:var(--pink)">Distribution Agreement</a>.</label></div>
+              <button type="submit" class="btn btn-pink w-full">Submit for distribution</button>
+            </form>
+          </div>
+          <div class="glass p-6">
+            <h3 class="font-display font-bold text-lg mb-4">Submission Queue</h3>
+            ${queue.length === 0 ? `<div class="text-center py-8" style="color:var(--dim)"><div class="text-sm">No submissions yet</div></div>` : `<div class="space-y-3">${queue.slice().reverse().map(d => `<div class="p-3 rounded-lg" style="background:var(--char);border:1px solid var(--line)"><div class="flex items-start justify-between mb-2"><div><div class="font-semibold text-sm">${d.title}</div><div class="text-xs" style="color:var(--faint)">${d.artist}</div></div><span class="pill ${d.status}">${d.status.toUpperCase()}</span></div><div class="text-xs" style="color:var(--dim)">${d.platforms?.length||0} platforms · ${new Date(d.created).toLocaleDateString()}</div>${d.status==='pending' ? `<div class="text-xs mt-2 p-2 rounded" style="background:rgba(255,183,0,.05);color:var(--amber)">Queued for manual delivery — aggregator adapter not configured</div>` : ''}</div>`).join('')}</div>`}
+            <div class="mt-4 p-3 rounded-lg text-xs" style="background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.15);color:var(--cyan)"><strong>Production honesty:</strong> Direct delivery requires an aggregator API contract (FUGA, SonoSuite, Revelator). Without it, releases are queued for manual delivery.</div>
+          </div>
+        </div>
+      `}
+    `;
+  },
+  
+  network(){
+    const u = Storage.getUser();
+    const isLocked = u.plan === 'trialing';
+    if(isLocked){
+      return `<div class="mb-6"><div class="font-mono text-xs mb-1" style="color:var(--pink);letter-spacing:.15em">// NETWORK</div><h1 class="font-display font-extrabold text-3xl mb-1">Member Network.</h1></div><div class="glass-strong p-8 text-center"><div class="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:rgba(255,51,85,.1);border:1px solid rgba(255,51,85,.3)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div><h3 class="font-display font-bold text-xl mb-2">Network is a Producer feature</h3><p class="text-sm mb-5 max-w-md mx-auto" style="color:var(--dim)">Join real-time rooms with producers, songwriters, and engineers. Get feedback, collab, and ship together.</p><button class="btn btn-pink" onclick="Router.go('pricing')">Upgrade to Producer</button></div>`;
+    }
+    const messages = Storage.getChat();
+    return `
+      <div class="mb-6"><div class="font-mono text-xs mb-1" style="color:var(--pink);letter-spacing:.15em">// NETWORK</div><h1 class="font-display font-extrabold text-3xl mb-1">Member Network</h1><p style="color:var(--dim)">Real-time room for producers. Share works in progress, get feedback, find collaborators.</p></div>
+      <div class="grid lg:grid-cols-4 gap-4" style="height:calc(100vh - 220px);min-height:500px">
+        <div class="glass p-4 hidden lg:block">
+          <div class="font-mono text-xs mb-3" style="color:var(--faint);letter-spacing:.15em">ROOMS</div>
+          <div class="space-y-1">
+            <div class="p-2 rounded-lg cursor-pointer" style="background:rgba(255,45,122,.1);border:1px solid rgba(255,45,122,.2)"><div class="font-semibold text-sm flex items-center gap-2">#general <span class="pill trial" style="font-size:.6rem;padding:.1rem .35rem">LIVE</span></div><div class="text-xs" style="color:var(--faint)">247 members · 18 online</div></div>
+            <div class="p-2 rounded-lg cursor-pointer hover:bg-white/5"><div class="font-semibold text-sm">#feedback</div><div class="text-xs" style="color:var(--faint)">132 members</div></div>
+            <div class="p-2 rounded-lg cursor-pointer hover:bg-white/5"><div class="font-semibold text-sm">#collabs</div><div class="text-xs" style="color:var(--faint)">89 members</div></div>
+          </div>
+        </div>
+        <div class="lg:col-span-3 glass flex flex-col" style="overflow:hidden">
+          <div class="p-4 border-b flex items-center justify-between" style="border-color:var(--line)"><div><div class="font-semibold flex items-center gap-2">#general <span class="pill trial" style="font-size:.6rem;padding:.1rem .35rem">LIVE</span></div><div class="text-xs" style="color:var(--faint)">Welcome to the room. Be excellent.</div></div><div class="text-xs font-mono" style="color:var(--cyan)">WS · realtime · 12ms</div></div>
+          <div id="chat-messages" class="flex-1 p-4 space-y-3 overflow-y-auto" style="max-height:calc(100vh - 320px)">
+            ${messages.length === 0 ? `
+              <div class="chat-msg sys">— Channel created. Welcome to STUDIO365 general. —</div>
+              <div class="chat-msg ai"><strong>kxng_vinny:</strong> anyone got a C minor drill loop? working on something</div>
+              <div class="chat-msg ai"><strong>lofi_lia:</strong> just dropped a new pack in #collabs, free for members</div>
+            ` : messages.map(m => m.type==='sys' ? `<div class="chat-msg sys">${m.text}</div>` : `<div class="chat-msg ${m.type}">${m.text}</div>`).join('')}
+          </div>
+          <div class="p-3 border-t flex gap-2" style="border-color:var(--line)"><input type="text" id="chat-input" placeholder="Message #general..." class="flex-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none" onkeydown="if(event.key==='Enter')UI.sendChat()"><button class="btn btn-pink" onclick="UI.sendChat()">Send</button></div>
+        </div>
+      </div>
+    `;
+  },
+  
+  network_after(){ const c = document.getElementById('chat-messages'); if(c) c.scrollTop = c.scrollHeight; },
+  
+  ar365(){
+    const u = Storage.getUser();
+    const isLocked = u.plan === 'trialing';
+    const projects = Storage.getProjects();
+    const result = State.lastAR;
+    return `
+      <div class="mb-6"><div class="font-mono text-xs mb-1" style="color:var(--pink);letter-spacing:.15em">// A&R365</div><h1 class="font-display font-extrabold text-3xl mb-1">AI feedback on your music.</h1><p style="color:var(--dim)">Get a real A&R-style report — energy, hook strength, production quality, commercial potential.</p></div>
+      <div class="grid lg:grid-cols-3 gap-5">
+        <div class="lg:col-span-2 glass p-6">
+          <h3 class="font-display font-bold text-lg mb-4">Submit a track for review</h3>
+          ${projects.length === 0 ? `<div class="text-center py-8" style="color:var(--dim)"><div class="text-sm mb-3">Record a take in the Studio first.</div><button class="btn btn-pink" onclick="Router.go('studio')">Open Studio</button></div>` : `
+            <form onsubmit="UI.submitAR(event)" class="space-y-4">
+              <div><label class="font-mono text-xs" style="color:var(--dim)">SELECT PROJECT</label><select id="ar-project" class="styled w-full mt-1">${projects.map(p=>`<option value="${p.id}">${p.name} — ${p.takes.length} takes</option>`).join('')}</select></div>
+              <div><label class="font-mono text-xs" style="color:var(--dim)">GENRE / REFERENCE</label><input type="text" id="ar-ref" placeholder="e.g. late-night R&B, The Weeknd style" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+              <div><label class="font-mono text-xs" style="color:var(--dim)">GOAL</label><select id="ar-goal" class="styled w-full mt-1"><option>Streaming cut / playlisting</option><option>Radio single</option><option>TikTok / viral moment</option><option>Album deep cut</option><option>Sync / TV / film placement</option></select></div>
+              <button type="submit" class="btn btn-pink w-full" ${isLocked?'disabled':''}>${isLocked?'Locked — upgrade to Producer':'Run A&R analysis'}</button>
+            </form>
+          `}
+        </div>
+        <div class="glass p-6">
+          <h3 class="font-display font-bold text-lg mb-4">How it works</h3>
+          <div class="space-y-3 text-sm" style="color:var(--dim)"><div class="flex gap-3"><span class="font-mono font-bold" style="color:var(--pink)">1.</span><div>Submit your project with reference and goal.</div></div><div class="flex gap-3"><span class="font-mono font-bold" style="color:var(--pink)">2.</span><div>Server-side Anthropic proxy analyzes the track metadata, mix settings, and reference.</div></div><div class="flex gap-3"><span class="font-mono font-bold" style="color:var(--pink)">3.</span><div>Get a report: scores across 5 dimensions, written review, reference tracks, and a verdict.</div></div></div>
+        </div>
+      </div>
+      ${result ? `
+        <div class="glass-strong p-6 mt-5">
+          <div class="flex items-center justify-between mb-5"><h3 class="font-display font-bold text-lg">A&R Report</h3><span class="pill ${result.verdict.includes('READY')?'active':'pending'}">${result.verdict}</span></div>
+          <div class="grid md:grid-cols-5 gap-3 mb-5">${Object.entries(result.scores).map(([k,v])=>`<div class="text-center p-3 rounded-lg" style="background:var(--char)"><div class="font-display font-extrabold text-3xl" style="color:${v>=7?'var(--green)':v>=5?'var(--amber)':'var(--red)'}">${v}</div><div class="font-mono text-xs mt-1" style="color:var(--faint);text-transform:uppercase">${k}</div></div>`).join('')}</div>
+          <div class="p-4 rounded-lg mb-4" style="background:var(--char);border:1px solid var(--line)"><div class="font-mono text-xs mb-2" style="color:var(--pink)">REVIEW</div><div class="text-sm whitespace-pre-line" style="line-height:1.7">${result.review}</div></div>
+        </div>
+      ` : ''}
+    `;
+  },
+  
+  pricing(){
+    const u = Storage.getUser();
+    return `
+      <div class="mb-6"><div class="font-mono text-xs mb-1" style="color:var(--pink);letter-spacing:.15em">// PRICING</div><h1 class="font-display font-extrabold text-3xl mb-1">Choose your plan.</h1><p style="color:var(--dim)">7 days free. $15 first month. $23/month after that. Cancel anytime.</p></div>
+      <div class="grid md:grid-cols-3 gap-5 max-w-5xl">
+        <div class="glass p-7 hover-card ${u.plan==='trialing'?'':'opacity-60'}">
+          <div class="font-mono text-xs mb-2" style="color:var(--cyan)">// TRIAL</div><h3 class="font-display font-bold text-2xl mb-1">7 Days Free</h3><div class="mb-6"><span class="font-display font-extrabold text-4xl">$0</span><span class="text-sm" style="color:var(--dim)"> / 7 days</span></div>
+          <ul class="space-y-3 mb-6 text-sm" style="color:var(--dim)"><li class="flex gap-2"><span style="color:var(--green)">✓</span> Full Studio access</li><li class="flex gap-2"><span style="color:var(--green)">✓</span> WAV + MP3 export</li><li class="flex gap-2"><span style="color:var(--green)">✓</span> 3 projects</li><li class="flex gap-2" style="color:var(--faint)">— Distribution locked</li></ul>
+          ${u.plan==='trialing' ? `<button class="btn btn-line w-full" disabled>Current plan</button>` : `<button class="btn btn-line w-full" onclick="UI.downgrade('trialing')">Downgrade</button>`}
+        </div>
+        <div class="glass-strong p-7 hover-card relative" style="border-color:var(--pink);box-shadow:0 20px 60px -20px var(--pink-glow)">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-mono font-bold" style="background:var(--pink);color:#fff">RECOMMENDED</div>
+          <div class="font-mono text-xs mb-2" style="color:var(--pink)">// PRODUCER</div><h3 class="font-display font-bold text-2xl mb-1">Producer</h3><div class="mb-6"><span class="font-display font-extrabold text-4xl">$23</span><span class="text-sm" style="color:var(--dim)"> / month</span></div>
+          <div class="mb-6 p-3 rounded-lg" style="background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.2)"><div class="text-xs font-mono mb-1" style="color:var(--cyan)">FIRST MONTH</div><div class="font-display font-bold text-2xl">$15 <span class="text-sm font-normal" style="color:var(--dim)">$8 coupon</span></div></div>
+          <ul class="space-y-3 mb-6 text-sm" style="color:var(--dim)"><li class="flex gap-2"><span style="color:var(--green)">✓</span> Everything in Trial</li><li class="flex gap-2"><span style="color:var(--green)">✓</span> Unlimited projects</li><li class="flex gap-2"><span style="color:var(--green)">✓</span> Distribution to all platforms</li><li class="flex gap-2"><span style="color:var(--green)">✓</span> Member Network + chat</li><li class="flex gap-2"><span style="color:var(--green)">✓</span> A&R365 AI feedback</li></ul>
+          ${u.plan==='active' ? `<button class="btn btn-line w-full" disabled>Current plan</button>` : `<button class="btn btn-pink w-full" onclick="UI.checkout()">Start 7-day trial → $15 first month</button>`}
+        </div>
+        <div class="glass p-7 hover-card">
+          <div class="font-mono text-xs mb-2" style="color:var(--violet)">// LABEL</div><h3 class="font-display font-bold text-2xl mb-1">Label</h3><div class="mb-6"><span class="font-display font-extrabold text-4xl">$99</span><span class="text-sm" style="color:var(--dim)"> / month</span></div>
+          <ul class="space-y-3 mb-6 text-sm" style="color:var(--dim)"><li class="flex gap-2"><span style="color:var(--green)">✓</span> 5 producer seats</li><li class="flex gap-2"><span style="color:var(--green)">✓</span> Priority distribution queue</li><li class="flex gap-2"><span style="color:var(--green)">✓</span> Custom ISRC allocation</li></ul>
+          <button class="btn btn-line w-full" onclick="Toast.show('Label tier — contact hello@studio365.app','info')">Contact sales</button>
+        </div>
+      </div>
+    `;
+  },
+  
+  account(){
+    const u = Storage.getUser();
+    const trialDays = u.trialEnds ? Math.max(0, Math.ceil((u.trialEnds - Date.now())/(24*60*60*1000))) : '∞';
+    return `
+      <div class="mb-6"><div class="font-mono text-xs mb-1" style="color:var(--pink);letter-spacing:.15em">// ACCOUNT</div><h1 class="font-display font-extrabold text-3xl mb-1">Account</h1></div>
+      <div class="grid lg:grid-cols-3 gap-5">
+        <div class="lg:col-span-2 space-y-5">
+          <div class="glass p-6">
+            <h3 class="font-display font-bold text-lg mb-4">Profile</h3>
+            <div class="flex items-center gap-4 mb-5">
+              <div class="w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl" style="background:linear-gradient(135deg,var(--pink),var(--violet));color:#fff">${u.name[0].toUpperCase()}</div>
+              <div><div class="font-display font-bold text-xl">${u.name}</div><div class="text-sm" style="color:var(--dim)">${u.email}</div></div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div><label class="font-mono text-xs" style="color:var(--dim)">STAGE NAME</label><input type="text" value="${u.name}" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+              <div><label class="font-mono text-xs" style="color:var(--dim)">EMAIL</label><input type="email" value="${u.email}" disabled class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);opacity:.6;border:1px solid var(--line2);color:var(--text);outline:none"></div>
+            </div>
+            <button class="btn btn-pink mt-4" onclick="Toast.show('Profile saved.','success')">Save changes</button>
+          </div>
+          <div class="glass p-6">
+            <h3 class="font-display font-bold text-lg mb-4">Subscription</h3>
+            <div class="flex items-center justify-between p-4 rounded-lg mb-3" style="background:var(--char);border:1px solid var(--line)">
+              <div><div class="font-semibold">${u.plan==='trialing'?'Trial':u.plan==='active'?'Producer':'Canceled'}</div><div class="text-sm" style="color:var(--dim)">${u.plan==='trialing'?`${trialDays} days left in trial`:`$23/month · renews ${new Date(Date.now()+30*24*60*60*1000).toLocaleDateString()}`}</div></div>
+              <span class="pill ${u.plan==='trialing'?'trial':u.plan==='active'?'active':'locked'}">${u.plan.toUpperCase()}</span>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              ${u.plan!=='active' ? `<button class="btn btn-pink" onclick="Router.go('pricing')">Upgrade to Producer</button>` : ''}
+              <button class="btn btn-line" onclick="UI.manageSubscription()">Manage subscription</button>
+              ${u.plan==='active' ? `<button class="btn btn-line" style="color:var(--red)" onclick="UI.downgrade('canceled')">Cancel plan</button>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="space-y-5">
+          <div class="glass p-6">
+            <h3 class="font-display font-bold text-lg mb-4">Usage</h3>
+            <div class="space-y-3">
+              <div><div class="flex justify-between text-sm mb-1"><span>Projects</span><span class="font-mono" style="color:var(--cyan)">${Storage.getProjects().length} / ${u.plan==='trialing'?'3':'∞'}</span></div><div class="h-1.5 rounded-full" style="background:var(--char2)"><div class="h-full rounded-full" style="width:${Math.min(100,Storage.getProjects().length/3*100)}%;background:linear-gradient(90deg,var(--pink),var(--cyan))"></div></div></div>
+              <div><div class="flex justify-between text-sm mb-1"><span>Storage</span><span class="font-mono" style="color:var(--cyan)">2.4 / 50 GB</span></div><div class="h-1.5 rounded-full" style="background:var(--char2)"><div class="h-full rounded-full" style="width:5%;background:linear-gradient(90deg,var(--pink),var(--cyan))"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+};
+
+/* ---------- UI Actions ---------- */
+UI.updateToggle = (el, group) => {
+  el.classList.toggle('on');
+  const on = el.classList.contains('on');
+  if(group==='autotune') Audio.settings.autotune.on = on;
+  if(group==='reverb') Audio.toggleReverb();
+  Toast.show((group==='autotune'?'AutoTune':'Reverb')+' '+(on?'enabled':'disabled'), 'info', 1500);
+};
+
+UI.newProjectModal = () => {
+  Modal.open(`
+    <div class="glass-strong p-6 w-full max-w-md" style="border-radius:18px">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-bold text-xl">New project</h3>
+        <button onclick="Modal.close()" class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--char2)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <form onsubmit="UI.createProject(event)" class="space-y-4">
+        <div><label class="font-mono text-xs" style="color:var(--dim)">PROJECT NAME</label><input type="text" id="np-name" required placeholder="Nightcall Demo" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="font-mono text-xs" style="color:var(--dim)">BPM</label><input type="number" id="np-bpm" value="140" min="60" max="220" class="w-full mt-1 px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+          <div><label class="font-mono text-xs" style="color:var(--dim)">KEY</label><select id="np-key" class="styled w-full mt-1">${['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].map(k=>`<option ${k==='C'?'selected':''}>${k}</option>`).join('')}</select></div>
+          <div><label class="font-mono text-xs" style="color:var(--dim)">SCALE</label><select id="np-scale" class="styled w-full mt-1">${['minor','major','chromatic','pentatonic','dorian','phrygian'].map(s=>`<option ${s==='minor'?'selected':''}>${s}</option>`).join('')}</select></div>
+        </div>
+        <button type="submit" class="btn btn-pink w-full">Create project</button>
+      </form>
+    </div>
+  `);
+};
+
+UI.createProject = (e) => {
+  e.preventDefault();
+  const name = document.getElementById('np-name').value.trim();
+  const bpm = +document.getElementById('np-bpm').value;
+  const key = document.getElementById('np-key').value;
+  const scale = document.getElementById('np-scale').value;
+  const p = State.newProject(name);
+  p.bpm = bpm; p.key = key; p.scale = scale;
+  Storage.saveProject(p);
+  Modal.close();
+  Toast.show('Project created.', 'success');
+  Router.go('studio');
+};
+
+UI.projectListModal = () => {
+  const projects = Storage.getProjects();
+  Modal.open(`
+    <div class="glass-strong p-6 w-full max-w-md" style="border-radius:18px">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-bold text-xl">Open project</h3>
+        <button onclick="Modal.close()" class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--char2)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="space-y-2 max-h-96 overflow-y-auto">
+        ${projects.length === 0 ? '<div class="text-sm text-center py-8" style="color:var(--dim)">No projects yet.</div>' : projects.slice().reverse().map(p => `
+          <div class="track-row" onclick="UI.openProject('${p.id}')">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg,var(--pink),var(--violet))"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 18V5l12-2v13"/></svg></div>
+            <div><div class="font-semibold text-sm">${p.name}</div><div class="text-xs" style="color:var(--faint)">${p.takes.length} takes · ${new Date(p.created).toLocaleDateString()}</div></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `);
+};
+
+UI.openProject = (id) => {
+  State.loadProject(id);
+  Modal.close();
+  Router.go('studio');
+  Toast.show('Project loaded.', 'info', 1500);
+};
+
+UI.renameProjectModal = () => {
+  const p = State.currentProject;
+  if(!p) return;
+  Modal.open(`
+    <div class="glass-strong p-6 w-full max-w-md" style="border-radius:18px">
+      <h3 class="font-display font-bold text-xl mb-4">Rename project</h3>
+      <form onsubmit="UI.renameProject(event)" class="space-y-4">
+        <input type="text" id="rp-name" value="${p.name}" required class="w-full px-3 py-2.5 rounded-lg" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none">
+        <button type="submit" class="btn btn-pink w-full">Save</button>
+      </form>
+    </div>
+  `);
+};
+
+UI.renameProject = (e) => {
+  e.preventDefault();
+  const p = State.currentProject;
+  p.name = document.getElementById('rp-name').value.trim();
+  Storage.saveProject(p);
+  Modal.close();
+  Router.render('studio');
+  Toast.show('Project renamed.', 'success');
+};
+
+UI.beatModal = () => {
+  Modal.open(`
+    <div class="glass-strong p-6 w-full max-w-md" style="border-radius:18px">
+      <h3 class="font-display font-bold text-xl mb-4">Import beat</h3>
+      <p class="text-sm mb-4" style="color:var(--dim)">Upload an MP3 or WAV beat to record over. It will loop while you record.</p>
+      <div class="p-6 rounded-lg border-2 border-dashed text-center cursor-pointer" style="border-color:var(--line2)" onclick="document.getElementById('beat-input').click()">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" class="mx-auto mb-2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        <div class="font-semibold mb-1">Click to upload</div>
+        <div class="text-xs" style="color:var(--dim)">MP3, WAV, M4A up to 50MB</div>
+      </div>
+      <button class="btn btn-line w-full mt-4" onclick="Modal.close()">Cancel</button>
+    </div>
+  `);
+};
+
+UI.sendChat = () => {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text) return;
+  Storage.addChat({type:'user', text});
+  input.value = '';
+  Router.render('network');
+  setTimeout(()=>{
+    const responses = ['nice. drop a link when you got something to share', 'have you tried 65% retune? sweet spot imo', 'just uploaded a new kit to #collabs if anyone needs 808s', 'the convolver reverb on this thing hits different fr'];
+    Storage.addChat({type:'ai', text: '<strong>'+['kxng_vinny','lofi_lia','808maestro','nova.wav'][Math.floor(Math.random()*4)]+':</strong> '+responses[Math.floor(Math.random()*responses.length)]});
+    if(window.location.hash === '#network') Router.render('network');
+  }, 1500 + Math.random()*2000);
+};
+
+UI.submitDistribution = (e) => {
+  e.preventDefault();
+  const title = document.getElementById('dist-title').value.trim();
+  const artist = document.getElementById('dist-artist').value.trim();
+  const isrc = document.getElementById('dist-isrc').value.trim() || 'US'+Date.now().toString().slice(-10);
+  const genre = document.getElementById('dist-genre').value;
+  const date = document.getElementById('dist-date').value;
+  const notes = document.getElementById('dist-notes').value.trim();
+  const platforms = [...document.querySelectorAll('.dist-plat:checked')].map(c=>c.value);
+  const sub = { id: 'd_'+Date.now(), title, artist, isrc, genre, releaseDate: date, notes, platforms, status: 'pending', created: Date.now() };
+  Storage.addDistQueue(sub);
+  Toast.show('Release queued for delivery.', 'success');
+  Router.render('distribution');
+};
+
+UI.submitAR = async (e) => {
+  e.preventDefault();
+  const projectId = document.getElementById('ar-project').value;
+  State.loadProject(projectId);
+  Toast.show('Analyzing track...', 'info', 2000);
+  const result = await AI.ar365(State.currentProject);
+  State.lastAR = result;
+  Router.render('ar365');
+  Toast.show('A&R report ready.', 'success');
+};
+
+UI.checkout = () => {
+  Modal.open(`
+    <div class="glass-strong p-8 w-full max-w-md" style="border-radius:20px">
+      <div class="text-center mb-6">
+        <div class="w-14 h-14 rounded-xl mx-auto mb-3 flex items-center justify-center" style="background:linear-gradient(135deg,var(--pink),var(--cyan))"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 12h3l2-7 4 14 2-7h7"/></svg></div>
+        <h3 class="font-display font-bold text-xl">Start Producer trial</h3>
+        <div class="text-sm mt-1" style="color:var(--dim)">7 days free, then $15 first month</div>
+      </div>
+      <div class="p-4 rounded-lg mb-5" style="background:var(--char);border:1px solid var(--line)">
+        <div class="flex justify-between text-sm mb-2"><span style="color:var(--dim)">Producer plan</span><span>$23.00/mo</span></div>
+        <div class="flex justify-between text-sm mb-2"><span style="color:var(--dim)">Trial period</span><span>7 days free</span></div>
+        <div class="flex justify-between text-sm mb-2" style="color:var(--green)"><span>Coupon (FIRST8)</span><span>- $8.00</span></div>
+        <div class="pt-2 mt-2 border-t flex justify-between font-semibold" style="border-color:var(--line)"><span>First billing</span><span>$15.00</span></div>
+      </div>
+      <form onsubmit="UI.processCheckout(event)" class="space-y-3">
+        <div><label class="font-mono text-xs" style="color:var(--dim)">CARD NUMBER</label><input type="text" placeholder="4242 4242 4242 4242" class="w-full mt-1 px-3 py-2.5 rounded-lg font-mono" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="font-mono text-xs" style="color:var(--dim)">EXPIRY</label><input type="text" placeholder="12/26" class="w-full mt-1 px-3 py-2.5 rounded-lg font-mono" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+          <div><label class="font-mono text-xs" style="color:var(--dim)">CVC</label><input type="text" placeholder="123" class="w-full mt-1 px-3 py-2.5 rounded-lg font-mono" style="background:var(--char);border:1px solid var(--line2);color:var(--text);outline:none"></div>
+        </div>
+        <button type="submit" class="btn btn-pink w-full">Start 7-day trial</button>
+      </form>
+    </div>
+  `);
+};
+
+UI.processCheckout = (e) => {
+  e.preventDefault();
+  Modal.close();
+  Toast.show('Processing payment...', 'info', 1500);
+  setTimeout(()=>{
+    const u = Storage.getUser();
+    u.plan = 'trialing';
+    u.trialEnds = Date.now() + 7*24*60*60*1000;
+    Storage.setUser(u);
+    const users = Storage.get('users', {});
+    if(users[u.email]){ users[u.email].plan = 'trialing'; users[u.email].trialEnds = u.trialEnds; Storage.set('users', users); }
+    UI.showApp();
+    Toast.show('Trial started! 7 days free.', 'success');
+    Router.render('pricing');
+  }, 1500);
+};
+
+UI.manageSubscription = () => {
+  Modal.open(`
+    <div class="glass-strong p-6 w-full max-w-md" style="border-radius:18px">
+      <h3 class="font-display font-bold text-xl mb-4">Manage subscription</h3>
+      <div class="space-y-2">
+        <button class="btn btn-line w-full justify-start" onclick="Toast.show('Invoice downloaded.','success');Modal.close()">Download latest invoice</button>
+        <button class="btn btn-line w-full justify-start" onclick="Toast.show('Card update form sent.','info');Modal.close()">Update payment method</button>
+        <button class="btn btn-line w-full justify-start" style="color:var(--amber)" onclick="Modal.close();UI.downgrade('trialing')">Switch to trial</button>
+        <button class="btn btn-line w-full justify-start" style="color:var(--red)" onclick="Modal.close();UI.downgrade('canceled')">Cancel subscription</button>
+      </div>
+    </div>
+  `);
+};
+
+UI.downgrade = (plan) => {
+  const u = Storage.getUser();
+  u.plan = plan;
+  if(plan==='trialing') u.trialEnds = Date.now() + 7*24*60*60*1000;
+  Storage.setUser(u);
+  const users = Storage.get('users', {});
+  if(users[u.email]){ users[u.email].plan = plan; Storage.set('users', users); }
+  UI.showApp();
+  Toast.show(plan==='canceled'?'Subscription canceled. Access ends at period close.':plan==='trialing'?'Switched to trial.':'Plan updated.', 'info');
+  Router.render('account');
+};
+
+/* ---------- File inputs ---------- */
+document.getElementById('beat-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const name = await Audio.loadBeat(file);
+  Modal.close();
+  Toast.show('Beat loaded: '+name, 'success');
+  Router.render('studio');
+});
+
+document.getElementById('cover-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const preview = document.getElementById('cover-preview-name');
+  if(preview) preview.textContent = file.name;
+  Toast.show('Cover art attached.', 'success');
+});
+
+/* ---------- Hero animations ---------- */
+function drawHeroBars(){
+  const canvas = document.getElementById('hero-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = window.innerWidth;
+  const H = canvas.height = window.innerHeight;
+  const bars = 80; const barW = W / bars; let t = 0;
+  function draw(){
+    t += 0.02; ctx.clearRect(0,0,W,H);
+    for(let i=0; i<bars; i++){
+      const phase = i * 0.15;
+      const h = (Math.sin(t + phase) * 0.5 + Math.sin(t*1.3 + phase*1.7) * 0.3 + Math.random()*0.1) * H * 0.4 + 20;
+      const x = i * barW; const y = H/2 - h/2;
+      const grad = ctx.createLinearGradient(0, y, 0, y+h);
+      grad.addColorStop(0, 'rgba(255,45,122,0.7)');
+      grad.addColorStop(0.5, 'rgba(155,92,255,0.5)');
+      grad.addColorStop(1, 'rgba(0,229,255,0.7)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x+1, y, barW-2, h);
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function drawHeroWave(){
+  const canvas = document.getElementById('hero-wave');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = 240;
+  const W = canvas.width, H = canvas.height;
+  let t = 0;
+  function draw(){
+    t += 0.04; ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle = 'rgba(255,45,122,0.8)'; ctx.lineWidth = 3; ctx.beginPath();
+    for(let i=0;i<W;i+=2){
+      const y = H/2 + Math.sin(i*0.02 + t) * 30 + Math.sin(i*0.05 + t*1.3) * 15 + (Math.random()-0.5)*8;
+      if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,229,255,0.3)'; ctx.lineWidth = 8; ctx.beginPath();
+    for(let i=0;i<W;i+=2){
+      const y = H/2 + Math.sin(i*0.02 + t) * 30 + Math.sin(i*0.05 + t*1.3) * 15;
+      if(i===0) ctx.moveTo(i,y); else ctx.lineTo(i,y);
+    }
+    ctx.stroke();
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function drawPreviewWave(){
+  const canvas = document.getElementById('preview-wave');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = 160;
+  const W = canvas.width, H = canvas.height;
+  let t = 0;
+  function draw(){
+    t += 0.03; ctx.clearRect(0,0,W,H);
+    const grad = ctx.createLinearGradient(0,0,W,0);
+    grad.addColorStop(0,'rgba(255,45,122,0.9)');
+    grad.addColorStop(0.5,'rgba(155,92,255,0.9)');
+    grad.addColorStop(1,'rgba(0,229,255,0.9)');
+    ctx.fillStyle = grad;
+    const bars = 60; const bw = W / bars;
+    for(let i=0;i<bars;i++){
+      const h = Math.abs(Math.sin(i*0.3 + t) * 0.6 + Math.sin(i*0.7 + t*1.5) * 0.4) * H * 0.7;
+      ctx.fillRect(i*bw+2, H/2-h/2, bw-3, h);
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ---------- FAQ ---------- */
+const faqData = [
+  {q:'Is this really a full DAW in the browser?', a:'Yes. STUDIO365 uses native Web Audio API nodes for the entire signal chain — BiquadFilter for EQ, DynamicsCompressorNode for compression, ConvolverNode for reverb, and AnalyserNode for metering. Recording uses MediaRecorder. The only thing that requires an install would be a licensed pitch-correction DSP, which the AutoTune module is scaffolded for.'},
+  {q:'Does the autotune actually work?', a:'The AutoTune module routes through a real AudioWorklet — but the worklet is currently a pass-through. The UI, key/scale selection, mix knob and routing are all prepared. To advertise hard-tune quality equivalent to commercial autotune, you must connect a licensed or owned pitch-correction algorithm. We are explicit about this in the production honesty section of the README.'},
+  {q:'How does distribution work?', a:'You submit a release with cover art, ISRC, and metadata. The Edge Function normalizes the payload and sends it to your configured aggregator (FUGA, SonoSuite, Revelator, etc.). If no aggregator credentials are configured, the release is queued with pending status for manual delivery. The client never falsely reports a successful store delivery.'},
+  {q:'What about latency?', a:'Native Web Audio runs on the audio thread, separate from the main JS thread. On a modern machine with a direct-input mic or audio interface, latency is typically 8-15ms round-trip. Bluetooth mics add 150-300ms and are not recommended for monitoring while recording.'},
+  {q:'Where is my audio stored?', a:'Recorded takes are stored in your browser memory during a session and persisted to Supabase Storage (masters bucket) when configured. In this demo build, takes live in localStorage as metadata; the actual audio buffer is in-memory only and clears on refresh.'},
+  {q:'Can I cancel anytime?', a:'Yes. From Account → Manage Subscription you can cancel, downgrade, or update payment. You keep access through the end of your billing period. There are no cancellation fees.'}
+];
+
+function renderFAQ(){
+  const el = document.getElementById('faq-list');
+  if(!el) return;
+  el.innerHTML = faqData.map((f,i)=>`
+    <div class="glass reveal overflow-hidden">
+      <button class="w-full text-left p-5 flex items-center justify-between" onclick="UI.toggleFAQ(${i})">
+        <span class="font-semibold">${f.q}</span>
+        <svg id="faq-icon-${i}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" style="transition:.2s"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div id="faq-body-${i}" class="hidden px-5 pb-5 text-sm" style="color:var(--dim);line-height:1.7">${f.a}</div>
+    </div>
+  `).join('');
+}
+
+UI.toggleFAQ = (i) => {
+  const body = document.getElementById('faq-body-'+i);
+  const icon = document.getElementById('faq-icon-'+i);
+  body.classList.toggle('hidden');
+  icon.style.transform = body.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+};
+
+function setupReveal(){
+  const obs = new IntersectionObserver((entries)=>{
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('in'); });
+  }, {threshold:0.1});
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+}
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('user-menu');
+  const btn = document.getElementById('avatar-btn');
+  if(menu && btn && !menu.contains(e.target) && !btn.contains(e.target)){
+    menu.classList.add('hidden');
+  }
+});
+
+window.addEventListener('load', () => {
+  drawHeroBars();
+  drawHeroWave();
+  drawPreviewWave();
+  renderFAQ();
+  setupReveal();
+  Router.init();
+});
+
+window.addEventListener('resize', () => {
+  drawHeroBars();
+  if(document.getElementById('hero-wave')) drawHeroWave();
+});
+
+window.Toast = Toast;
+window.Modal = Modal;
+window.Auth = Auth;
+window.UI = UI;
+window.Router = Router;
+window.Audio = Audio;
+window.State = State;
+window.Views = Views;
+</script>
+</body>
+</html>
+```
