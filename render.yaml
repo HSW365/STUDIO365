@@ -1,0 +1,13 @@
+services:
+  - type: web
+    runtime: static
+    name: studio365
+    buildCommand: ""
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=3600

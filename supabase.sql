@@ -25,3 +25,15 @@ alter publication supabase_realtime add table messages;
 
 -- Create private storage buckets named masters and covers in the dashboard.
 -- For production, add storage policies limiting paths to auth.uid() and do not make masters public.
+
+-- STUDIO365 Pro early-access list (used by the landing page form).
+-- Anyone can add their email; nobody can read the list through the public API.
+create table if not exists studio365_waitlist(
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique check (email ~* '^[^@\s]+@[^@\s]+\.[^@\s]{2,}$' and length(email) <= 254),
+  source text default 'landing' check (length(source) <= 40),
+  created_at timestamptz not null default now()
+);
+alter table studio365_waitlist enable row level security;
+drop policy if exists waitlist_insert on studio365_waitlist;
+create policy waitlist_insert on studio365_waitlist for insert to anon, authenticated with check (true);

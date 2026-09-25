@@ -4,19 +4,193 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0a0a0f">
-  <meta name="description" content="STUDIO365 — record, tune, mix, master and distribute music.">
-  <title>STUDIO365</title>
+  <title>STUDIO365 by HSW365 — Record, tune, mix and master in your browser</title>
+  <meta name="description" content="A full vocal studio in your browser. Record over your beat, snap the vocal to key, mix, master to streaming loudness, and export a release-ready file. No plugins, no downloads.">
+  <meta property="og:title" content="STUDIO365 by HSW365">
+  <meta property="og:description" content="Record it tonight. Release it tonight. A full vocal studio in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/studio365.css">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/site.css">
 </head>
-<body>
-  <div id="toast" class="toast" aria-live="polite"></div>
-  <div id="app"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
-  <script src="./config.js"></script>
-  <script type="module" src="./js/app.js"></script>
+<body class="site">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <a class="brand" href="./" aria-label="STUDIO365 home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="20" rx="1"/><rect x="17" y="9" width="4" height="14" rx="1"/><rect x="24" y="3" width="4" height="26" rx="1"/></svg>
+      <span>STUDIO365</span>
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="#chain">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">Questions</a>
+    </nav>
+    <a class="btn primary" href="studio.html">Open the studio</a>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>Record it tonight.<br>Release it tonight.</h1>
+        <p class="lede">STUDIO365 is a full vocal studio in your browser. Record over your beat, snap the vocal to key, mix it, master it to streaming loudness, and walk away with a finished file.</p>
+        <div class="hero-cta">
+          <a class="btn primary big" href="studio.html">Open the studio free</a>
+          <span class="cta-note">No download. No card. Works on your laptop tonight.</span>
+        </div>
+      </div>
+
+      <figure class="console" aria-labelledby="demoCaption">
+        <div class="console-top">
+          <button class="demo-play" id="demoPlay" type="button" aria-label="Play demo">
+            <svg viewBox="0 0 24 24" class="i-play" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+            <svg viewBox="0 0 24 24" class="i-stop" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+          </button>
+          <div class="ab" role="radiogroup" aria-label="What you hear">
+            <button type="button" role="radio" aria-checked="false" data-mode="raw" id="abRaw">As sung</button>
+            <button type="button" role="radio" aria-checked="true" data-mode="tuned" id="abTuned">Tuned</button>
+          </div>
+          <span class="console-readout" id="demoNote" aria-live="off">A minor</span>
+        </div>
+        <canvas id="demoCanvas" aria-hidden="true"></canvas>
+        <figcaption id="demoCaption">Press play, then flip between <b>As sung</b> and <b>Tuned</b>. The grey line is the singer drifting. The line on top is where STUDIO365 puts every note.</figcaption>
+      </figure>
+    </section>
+
+    <section class="chain" id="chain" aria-labelledby="chainTitle">
+      <h2 id="chainTitle">Five stops from idea to finished record.</h2>
+      <ol class="steps">
+        <li>
+          <span class="step-n">1</span>
+          <h3>Record</h3>
+          <p>Drop in your beat and press Record. A count-in and click keep you on time, and every take lines up to the beat automatically.</p>
+        </li>
+        <li>
+          <span class="step-n">2</span>
+          <h3>Tune</h3>
+          <p>STUDIO365 reads the key of your beat and pulls each note to it. Go hard and robotic, or keep it natural with your vibrato intact.</p>
+        </li>
+        <li>
+          <span class="step-n">3</span>
+          <h3>Mix</h3>
+          <p>A vocal chain engineers reach for first: low cut, EQ, compression, S taming, warmth, reverb and a tempo-synced echo.</p>
+        </li>
+        <li>
+          <span class="step-n">4</span>
+          <h3>Master</h3>
+          <p>Hit a real loudness target, -14 LUFS for streaming or -9 for the club, with peaks held safely under -1 dB.</p>
+        </li>
+        <li>
+          <span class="step-n">5</span>
+          <h3>Export</h3>
+          <p>Download a 24-bit WAV for your distributor, MP3s for sharing, or your processed vocal alone for a producer.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="proof" aria-labelledby="proofTitle">
+      <div class="proof-copy">
+        <h2 id="proofTitle">Your session never leaves your machine.</h2>
+        <p>Takes, beats and settings save inside your browser as you work. Close the tab, come back next week, and the session opens where you left it. Nothing uploads unless you choose to share it.</p>
+      </div>
+      <dl class="facts">
+        <div><dt>Runs in</dt><dd>Chrome, Edge, Safari and Firefox on desktop, laptop and tablet</dd></div>
+        <div><dt>Takes</dt><dd>As many as you want per session. Pick the best one and keep the rest</dd></div>
+        <div><dt>Exports</dt><dd>WAV 24-bit, MP3 320, MP3 128, processed vocal stem</dd></div>
+        <div><dt>Shortcuts</dt><dd>Space to play and stop, R to record</dd></div>
+      </dl>
+    </section>
+
+    <section class="pricing" id="pricing" aria-labelledby="pricingTitle">
+      <h2 id="pricingTitle">Start free. Go Pro when you're ready to ship.</h2>
+      <div class="plans">
+        <article class="plan">
+          <h3>Studio</h3>
+          <p class="price"><b>$0</b><span>free, right now</span></p>
+          <ul>
+            <li>Record unlimited takes over your beat</li>
+            <li>Key detection and pitch correction</li>
+            <li>Full vocal mix chain</li>
+            <li>Mastering to streaming loudness</li>
+            <li>WAV and MP3 export</li>
+          </ul>
+          <a class="btn ghost big" href="studio.html">Open the studio</a>
+        </article>
+        <article class="plan pro">
+          <h3>Pro <span class="soon">Opening soon</span></h3>
+          <p class="price"><b>$23</b><span>per month after a 7-day trial. First month $15.</span></p>
+          <ul>
+            <li>Everything in Studio</li>
+            <li>Cloud sessions on every device you own</li>
+            <li>Release to Spotify, Apple Music and more</li>
+            <li>A&amp;R365 feedback on your record</li>
+            <li>Artist network and collabs</li>
+          </ul>
+          <form class="waitlist" id="waitlist" novalidate>
+            <label for="wlEmail" class="sr-only">Email address</label>
+            <input id="wlEmail" name="email" type="email" autocomplete="email" placeholder="you@email.com" required>
+            <button class="btn primary" type="submit">Get early access</button>
+            <p class="form-msg" id="wlMsg" role="status" aria-live="polite">Early access locks in the $15 first month.</p>
+          </form>
+        </article>
+      </div>
+    </section>
+
+    <section class="faq" id="faq" aria-labelledby="faqTitle">
+      <h2 id="faqTitle">Questions</h2>
+      <div class="faq-list">
+        <details>
+          <summary>What do I need to start?</summary>
+          <p>A computer, a browser, and a microphone. A USB mic or an interface is best, but a headset mic works for writing sessions. Wear headphones while you record so the beat doesn't bleed into your vocal.</p>
+        </details>
+        <details>
+          <summary>Is the tuning real pitch correction?</summary>
+          <p>Yes. STUDIO365 tracks the pitch of your take, finds the nearest note in your key, and shifts the audio to it. Retune speed and strength control how obvious it is, from a hard, stepped effect to light, invisible correction.</p>
+        </details>
+        <details>
+          <summary>Where are my sessions stored?</summary>
+          <p>In your browser's storage on the device you used. They stay there until you delete them or clear site data. Export anything you want to keep forever. Pro adds cloud sessions that follow you across devices.</p>
+        </details>
+        <details>
+          <summary>Can I release what I make?</summary>
+          <p>Yes. The master WAV is 24-bit and loudness-matched for streaming, which is what distributors ask for. Your music is yours. STUDIO365 claims no rights to anything you record.</p>
+        </details>
+        <details>
+          <summary>Does it work on my phone?</summary>
+          <p>It opens and plays back on phones, but recording on a phone depends on the browser's mic handling. For sessions you plan to release, use a laptop or tablet with headphones.</p>
+        </details>
+        <details>
+          <summary>My recording is out of time with the beat.</summary>
+          <p>Bluetooth headphones add delay the browser can't always measure. Use wired headphones, or nudge the take with the Vocal timing fader in the Mix tab until it sits on the grid.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="closer">
+      <h2>The beat is ready. So are you.</h2>
+      <a class="btn primary big" href="studio.html">Open the studio free</a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-brand">
+      <b>STUDIO365</b>
+      <span>A product of HSW365 Media LLC. Turn negative into positive.</span>
+    </div>
+    <nav aria-label="Footer">
+      <a href="studio.html">Studio</a>
+      <a href="#pricing">Pricing</a>
+      <a href="mailto:hsw365media@gmail.com">Contact</a>
+    </nav>
+    <small>© <span id="year">2026</span> HSW365 Media LLC</small>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="config.js"></script>
+  <script type="module" src="assets/js/landing.js"></script>
 </body>
 </html>

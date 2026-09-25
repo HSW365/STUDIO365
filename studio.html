@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>Studio · STUDIO365 by HSW365</title>
+  <meta name="description" content="Record over your beat, tune the vocal to key, mix and master it, and export a release-ready file. All in your browser.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/studio.css">
+</head>
+<body class="studio">
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="STUDIO365 home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="20" rx="1"/><rect x="17" y="9" width="4" height="14" rx="1"/><rect x="24" y="3" width="4" height="26" rx="1"/></svg>
+      <span>STUDIO365</span>
+    </a>
+    <div class="project-field">
+      <label for="projectName" class="sr-only">Project name</label>
+      <input id="projectName" value="Untitled session" maxlength="80" autocomplete="off" spellcheck="false">
+      <span id="saveState" class="save-state" aria-live="polite">Saved on this device</span>
+    </div>
+    <nav class="topbar-actions">
+      <button class="btn ghost" id="btnLibrary" type="button">Sessions</button>
+      <button class="btn ghost" id="btnNew" type="button">New session</button>
+      <button class="btn primary" id="btnExport" type="button" disabled>Export</button>
+    </nav>
+  </header>
+
+  <main class="workspace">
+    <section class="deck" aria-label="Recording deck">
+      <div class="transport">
+        <button class="rec" id="btnRecord" type="button" aria-pressed="false" title="Record (R)">
+          <span class="rec-dot" aria-hidden="true"></span><span class="rec-label">Record</span>
+        </button>
+        <button class="play" id="btnPlay" type="button" title="Play / stop (Space)" aria-label="Play">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="i-play"><path d="M7 4.5v15l13-7.5z"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="i-stop"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+        </button>
+        <button class="icon-btn" id="btnRewind" type="button" title="Back to start" aria-label="Back to start">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>
+        </button>
+        <div class="clock" aria-live="off"><span id="clock">0:00.0</span><span class="clock-total" id="clockTotal">/ 0:00</span></div>
+
+        <div class="readouts">
+          <label class="readout">
+            <span>BPM</span>
+            <input id="bpm" type="number" min="40" max="220" step="1" value="90" inputmode="numeric">
+          </label>
+          <div class="readout"><span>Key</span><b id="keyReadout">A minor</b></div>
+        </div>
+
+        <div class="toggles">
+          <label class="chip"><input type="checkbox" id="optCountIn" checked><span>Count-in</span></label>
+          <label class="chip"><input type="checkbox" id="optClick"><span>Click</span></label>
+          <label class="chip"><input type="checkbox" id="optMonitor"><span>Hear mic</span></label>
+        </div>
+
+        <div class="meter" aria-label="Mic level" title="Mic input level">
+          <div class="meter-fill" id="meterFill"></div>
+          <div class="meter-peak" id="meterPeak"></div>
+        </div>
+      </div>
+
+      <div class="lanes">
+        <div class="lane-labels">
+          <div class="lane-label"><b>Beat</b><span id="beatName">No beat loaded</span></div>
+          <div class="lane-label"><b>Vocal</b><span id="vocalName">No take yet</span></div>
+        </div>
+        <div class="timeline" id="timeline">
+          <canvas id="timelineCanvas" aria-label="Timeline. Click to move the playhead."></canvas>
+          <div class="drop-hint" id="dropHint">
+            <p class="drop-title">Drop your beat here</p>
+            <p>MP3, WAV, M4A or FLAC. Or <button type="button" class="link" id="btnPickBeat">choose a file</button>, or just hit Record to go a cappella.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pitch-panel" id="pitchPanel" hidden>
+        <div class="panel-head">
+          <h2>Pitch</h2>
+          <p class="legend"><i class="sw raw"></i>What you sang <i class="sw tuned"></i>Where it lands</p>
+        </div>
+        <canvas id="pitchCanvas" aria-label="Pitch graph of the selected take"></canvas>
+      </div>
+
+      <div class="takes">
+        <div class="panel-head">
+          <h2>Takes</h2>
+          <div class="head-actions">
+            <button class="btn ghost small" type="button" id="btnImportVocal">Import vocal file</button>
+            <button class="btn ghost small" type="button" id="btnReplaceBeat">Replace beat</button>
+          </div>
+        </div>
+        <ol class="take-list" id="takeList"></ol>
+        <p class="empty" id="takesEmpty">Your takes land here. Record as many as you want and pick the best one.</p>
+      </div>
+    </section>
+
+    <aside class="rack" aria-label="Processing rack">
+      <div class="tabs" role="tablist">
+        <button role="tab" id="tab-tune" aria-controls="panel-tune" aria-selected="true" type="button">Tune</button>
+        <button role="tab" id="tab-mix" aria-controls="panel-mix" aria-selected="false" type="button">Mix</button>
+        <button role="tab" id="tab-master" aria-controls="panel-master" aria-selected="false" type="button">Master</button>
+      </div>
+
+      <section class="tab-panel" id="panel-tune" role="tabpanel" aria-labelledby="tab-tune">
+        <label class="switch-row"><span>Pitch correction</span><input type="checkbox" id="tuneOn" checked role="switch"><i></i></label>
+        <div class="field-row two">
+          <label class="field"><span>Key</span><select id="tuneRoot"></select></label>
+          <label class="field"><span>Scale</span><select id="tuneScale"></select></label>
+        </div>
+        <button class="btn ghost full" type="button" id="btnDetectKey" disabled>Read key and tempo from beat</button>
+        <div class="fader" data-key="speedMs" data-group="tune">
+          <div class="fader-head"><label for="f-speedMs">Retune speed</label><output></output></div>
+          <input id="f-speedMs" type="range" min="0" max="200" step="1">
+          <div class="fader-scale"><span>Hard, robotic</span><span>Natural</span></div>
+        </div>
+        <div class="fader" data-key="amount" data-group="tune">
+          <div class="fader-head"><label for="f-amount">Correction strength</label><output></output></div>
+          <input id="f-amount" type="range" min="0" max="100" step="1">
+        </div>
+        <div class="fader" data-key="keepVibrato" data-group="tune">
+          <div class="fader-head"><label for="f-keepVibrato">Keep vibrato</label><output></output></div>
+          <input id="f-keepVibrato" type="range" min="0" max="100" step="1">
+        </div>
+        <p class="note" id="tuneStatus">Record or import a take, then the tuning runs automatically.</p>
+      </section>
+
+      <section class="tab-panel" id="panel-mix" role="tabpanel" aria-labelledby="tab-mix" hidden>
+        <button class="btn ghost full" type="button" id="btnBalance" disabled>Balance vocal to beat</button>
+        <h3>Levels</h3>
+        <div class="fader" data-key="vocalDb" data-group="mix"><div class="fader-head"><label for="f-vocalDb">Vocal</label><output></output></div><input id="f-vocalDb" type="range" min="-24" max="12" step="0.5"></div>
+        <div class="fader" data-key="beatDb" data-group="mix"><div class="fader-head"><label for="f-beatDb">Beat</label><output></output></div><input id="f-beatDb" type="range" min="-24" max="6" step="0.5"></div>
+        <div class="fader" data-key="pan" data-group="mix"><div class="fader-head"><label for="f-pan">Vocal pan</label><output></output></div><input id="f-pan" type="range" min="-100" max="100" step="1"></div>
+        <div class="fader" data-key="vocalOffsetMs" data-group="mix"><div class="fader-head"><label for="f-vocalOffsetMs">Vocal timing</label><output></output></div><input id="f-vocalOffsetMs" type="range" min="-250" max="250" step="1"></div>
+        <h3>Tone</h3>
+        <div class="fader" data-key="hpf" data-group="mix"><div class="fader-head"><label for="f-hpf">Low cut</label><output></output></div><input id="f-hpf" type="range" min="20" max="250" step="1"></div>
+        <div class="fader" data-key="body" data-group="mix"><div class="fader-head"><label for="f-body">Body</label><output></output></div><input id="f-body" type="range" min="-6" max="6" step="0.5"></div>
+        <div class="fader" data-key="presence" data-group="mix"><div class="fader-head"><label for="f-presence">Presence</label><output></output></div><input id="f-presence" type="range" min="-6" max="8" step="0.5"></div>
+        <div class="fader" data-key="air" data-group="mix"><div class="fader-head"><label for="f-air">Air</label><output></output></div><input id="f-air" type="range" min="-6" max="8" step="0.5"></div>
+        <div class="fader" data-key="sibilance" data-group="mix"><div class="fader-head"><label for="f-sibilance">Tame harsh S sounds</label><output></output></div><input id="f-sibilance" type="range" min="0" max="10" step="0.5"></div>
+        <h3>Character</h3>
+        <div class="fader" data-key="comp" data-group="mix"><div class="fader-head"><label for="f-comp">Compression</label><output></output></div><input id="f-comp" type="range" min="0" max="100" step="1"></div>
+        <div class="fader" data-key="warmth" data-group="mix"><div class="fader-head"><label for="f-warmth">Warmth</label><output></output></div><input id="f-warmth" type="range" min="0" max="100" step="1"></div>
+        <div class="fader" data-key="reverb" data-group="mix"><div class="fader-head"><label for="f-reverb">Reverb</label><output></output></div><input id="f-reverb" type="range" min="0" max="100" step="1"></div>
+        <div class="fader" data-key="delay" data-group="mix"><div class="fader-head"><label for="f-delay">Echo (1/8 note)</label><output></output></div><input id="f-delay" type="range" min="0" max="100" step="1"></div>
+        <button class="btn ghost small" type="button" id="btnResetMix">Reset mix</button>
+      </section>
+
+      <section class="tab-panel" id="panel-master" role="tabpanel" aria-labelledby="tab-master" hidden>
+        <label class="switch-row"><span>Master on playback</span><input type="checkbox" id="masterOn" checked role="switch"><i></i></label>
+        <fieldset class="targets">
+          <legend>Loudness target</legend>
+          <label class="target"><input type="radio" name="target" value="-14" checked><span><b>Streaming</b><em>-14 LUFS. Spotify, Apple Music, YouTube.</em></span></label>
+          <label class="target"><input type="radio" name="target" value="-9"><span><b>Club and car</b><em>-9 LUFS. Loud and dense.</em></span></label>
+          <label class="target"><input type="radio" name="target" value="-16"><span><b>Dynamic</b><em>-16 LUFS. Room to breathe.</em></span></label>
+        </fieldset>
+        <div class="stats">
+          <div><span>Loudness</span><b id="statLufs">–</b></div>
+          <div><span>Peak</span><b id="statPeak">–</b></div>
+          <div><span>Limiting</span><b id="statGr">–</b></div>
+        </div>
+        <p class="note">Peaks are held under -1 dB so streaming encoders don't distort your track.</p>
+      </section>
+
+      <div class="render-state" id="renderState" aria-live="polite"></div>
+    </aside>
+  </main>
+
+  <dialog id="libraryDialog" class="sheet">
+    <form method="dialog" class="sheet-head"><h2>Sessions on this device</h2><button class="icon-btn" aria-label="Close" value="close">✕</button></form>
+    <ul class="session-list" id="sessionList"></ul>
+    <p class="sheet-foot" id="storageNote"></p>
+  </dialog>
+
+  <dialog id="exportDialog" class="sheet">
+    <form method="dialog" class="sheet-head"><h2>Export</h2><button class="icon-btn" aria-label="Close" value="close">✕</button></form>
+    <div class="export-options">
+      <button type="button" class="export-opt" data-format="wav24"><b>Master WAV</b><span>24-bit, full quality. Send this to your distributor.</span></button>
+      <button type="button" class="export-opt" data-format="mp3-320"><b>MP3 320</b><span>High quality for sharing and DJs.</span></button>
+      <button type="button" class="export-opt" data-format="mp3-128"><b>MP3 128</b><span>Small file for texts and quick previews.</span></button>
+      <button type="button" class="export-opt" data-format="stem"><b>Vocal stem WAV</b><span>Your processed vocal alone, for a producer or engineer.</span></button>
+    </div>
+    <div class="export-progress" id="exportProgress" hidden><div class="bar"><i id="exportBar"></i></div><p id="exportMsg">Rendering</p></div>
+  </dialog>
+
+  <input type="file" id="fileBeat" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden>
+  <input type="file" id="fileVocal" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js" defer></script>
+  <script type="module" src="assets/js/studio.js"></script>
+</body>
+</html>
