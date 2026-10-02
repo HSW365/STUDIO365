@@ -705,6 +705,7 @@ function updateBeatUi() {
   const extra = stackActive() ? stackedTakes().length : 0;
   $('vocalName').textContent = t ? t.name + (extra ? ` + ${extra} stacked` : '') : 'No take yet';
   $('btnCheck').disabled = !mixCache;
+  $('stackNeedsTake').hidden = !!t;
   $('dropHint').hidden = !!P.beat;
   $('btnDetectKey').disabled = !P.beat;
   $('btnBalance').disabled = !(P.beat && t);

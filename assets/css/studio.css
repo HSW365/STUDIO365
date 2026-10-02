@@ -321,3 +321,4 @@ body.studio { min-height: 100vh; display: flex; flex-direction: column; backgrou
 .note.err { color: #fca5a5; }
 .note.ok { color: var(--cyan); }
 .stats b { font-size: 15px; white-space: nowrap; }
+.note.warn { color: var(--yellow); }

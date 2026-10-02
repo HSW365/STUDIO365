@@ -165,13 +165,24 @@ function build() {
     } finally { btn.disabled = false; }
   });
 
+  let checking = false;
   const tryKey = async () => {
-    const msg = $('proKeyMsg'); msg.className = 'pro-msg';
-    const r = await License.activate($('proKeyInput').value);
-    if (!r.ok) { msg.textContent = r.reason; msg.classList.add('err'); return; }
-    $('proKeyInput').value = '';
-    await refresh();
-    msg.textContent = `Pro is on until ${License.fmtDate(r.expires)}.`; msg.classList.add('ok');
+    if (checking) return;
+    const msg = $('proKeyMsg');
+    const typed = $('proKeyInput').value.trim();
+    // Pro already on and nothing new typed: say so instead of complaining about an empty box.
+    if (!typed && state.pro) { msg.className = 'pro-msg ok'; msg.textContent = `Pro is on until ${License.fmtDate(state.expires)}. You're all set.`; return; }
+    checking = true; msg.className = 'pro-msg';
+    try {
+      const r = await License.activate(typed);
+      if (!r.ok) {
+        msg.textContent = /@/.test(typed) && !/S365-/.test(typed) ? 'That is an email address. Paste the Pro key or the unlock link you were sent. It starts with S365-.' : r.reason;
+        msg.classList.add('err'); return;
+      }
+      $('proKeyInput').value = '';
+      await refresh();
+      msg.textContent = `Pro is on until ${License.fmtDate(r.expires)}. You're all set.`; msg.classList.add('ok');
+    } finally { checking = false; }
   };
   $('proActivate').addEventListener('click', tryKey);
   $('proKeyInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); tryKey(); } });
