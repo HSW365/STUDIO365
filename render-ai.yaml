@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: studio365-ai-os
+    runtime: node
+    rootDir: .
+    buildCommand: npm --prefix server install
+    startCommand: npm --prefix server start
+    healthCheckPath: /api/health
+    envVars:
+      - key: CASH_APP_HANDLE
+        value: $hsw365
+      - key: CASH_APP_CLIENT_ID
+        sync: false
+      - key: CASH_APP_API_KEY
+        sync: false
+      - key: CASH_APP_MERCHANT_ID
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: AI_MODEL
+        value: gpt-4.1-mini
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
