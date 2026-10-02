@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>Key maker · STUDIO365</title>
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <style>
+    body { min-height: 100vh; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; display: grid; gap: 20px; }
+    header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    h1 { margin: 0; font: 800 44px/1 var(--display); letter-spacing: .01em; }
+    h1 small { display: block; font: 700 12px/1 var(--mono); letter-spacing: .12em; color: #d6b4fe; margin-bottom: 8px; text-transform: uppercase; }
+    h2 { margin: 0 0 6px; font: 700 26px/1.1 var(--display); letter-spacing: .02em; }
+    p { margin: 0; color: var(--text-2); font-size: 15px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); padding: 22px; display: grid; gap: 14px; }
+    .card.lead { border-color: rgba(168,85,247,.5); background: radial-gradient(110% 80% at 100% 0%, rgba(168,85,247,.18), transparent 60%), var(--panel); }
+    label { display: grid; gap: 6px; font-size: 13px; color: var(--text-2); }
+    input[type="email"], input[type="text"], select, textarea {
+      width: 100%; min-height: 46px; padding: 10px 14px; border-radius: var(--r-m); border: 1px solid var(--line-2);
+      background: var(--ink); color: var(--text); font-size: 15px;
+    }
+    textarea { font: 400 13px/1.5 var(--mono); min-height: 150px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--violet); }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 190px auto; gap: 10px; align-items: end; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .status { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+    .status::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+    .status.ok::before { background: #34d399; } .status.bad::before { background: var(--red); }
+    .btn.pro { background: var(--violet); color: #fff; }
+    .btn.pro:hover:not([disabled]) { background: #b874f9; }
+    .msg { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+    .msg.ok { color: var(--cyan); } .msg.err { color: #fca5a5; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+    td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    td.mono { font-family: var(--mono); font-size: 12px; }
+    .tag { font: 700 10px/1 var(--mono); letter-spacing: .08em; padding: 4px 7px; border-radius: 4px; text-transform: uppercase; }
+    .tag.live { background: rgba(52,211,153,.15); color: #6ee7b7; } .tag.soon { background: rgba(251,191,36,.15); color: var(--yellow); } .tag.out { background: var(--red-dim); color: #fca5a5; }
+    .scroll { overflow-x: auto; }
+    details summary { cursor: pointer; color: var(--text-2); font-size: 14px; }
+    details[open] summary { margin-bottom: 14px; }
+    code { font-family: var(--mono); font-size: 12px; color: var(--cyan); word-break: break-all; }
+    ol { margin: 0; padding-left: 20px; color: var(--text-2); font-size: 15px; display: grid; gap: 6px; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } h1 { font-size: 36px; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1><small>STUDIO365 owner tools</small>Key maker</h1>
+      <a class="btn ghost small" href="studio.html">Open the studio</a>
+    </header>
+
+    <section class="card" id="ownerCard">
+      <h2>Your owner key file</h2>
+      <p>Pro keys are signed with <b>studio365-owner-key.json</b>. Load it once on this device. It stays in this browser and is never uploaded. Anyone who has that file can make Pro keys, so keep it private and keep a backup.</p>
+      <div class="row">
+        <button class="btn ghost" type="button" id="btnLoadOwner">Load owner key file</button>
+        <button class="btn ghost small" type="button" id="btnForget" hidden>Remove it from this browser</button>
+        <span class="status" id="ownerStatus">No owner key loaded</span>
+      </div>
+      <input type="file" id="fileOwner" accept=".json,application/json" hidden>
+    </section>
+
+    <section class="card lead">
+      <h2>Make a Pro key</h2>
+      <ol>
+        <li>Check Cash App for the payment and the email in its note.</li>
+        <li>Type that email, pick how long, and make the key.</li>
+        <li>Send the customer the message below. One tap on the link turns Pro on for them.</li>
+      </ol>
+      <form class="grid" id="makeForm" novalidate>
+        <label>Customer email<input id="email" type="email" placeholder="customer@email.com" autocomplete="off" spellcheck="false" required></label>
+        <label>Length<select id="months"><option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></label>
+        <button class="btn pro" type="submit" id="btnMake" disabled>Make key</button>
+      </form>
+      <label class="row" style="font-size:14px"><input type="checkbox" id="extend" checked style="width:16px;height:16px;accent-color:var(--violet)"> If this customer still has time left, start the new month when the old one ends</label>
+      <p class="msg" id="makeMsg" role="status" aria-live="polite"></p>
+      <div id="result" hidden style="display:grid;gap:12px">
+        <label>Message for the customer<textarea id="message" readonly></textarea></label>
+        <div class="row">
+          <button class="btn primary" type="button" id="btnCopyMsg">Copy message</button>
+          <a class="btn ghost" id="btnEmail">Open in my email app</a>
+          <button class="btn ghost" type="button" id="btnCopyLink">Copy just the link</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2>Members</h2>
+        <button class="btn ghost small" type="button" id="btnCsv">Download list (CSV)</button>
+      </div>
+      <p>Every key made on this device. This list lives in this browser only, so download it now and then.</p>
+      <div class="scroll"><table><thead><tr><th>Email</th><th>Made</th><th>Good until</th><th></th><th></th></tr></thead><tbody id="log"></tbody></table></div>
+      <p class="msg" id="logEmpty">No keys made yet.</p>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary>Make a new key pair (only if the owner file was lost or leaked)</summary>
+        <div style="display:grid;gap:12px">
+          <p>This creates a brand new owner file. Every Pro key made with the old one stops working once you paste the new public key into <code>config.js</code>, so you would need to send current members new keys.</p>
+          <div class="row"><button class="btn ghost" type="button" id="btnNewPair">Make new key pair</button></div>
+          <label id="pubWrap" hidden>Paste this over <code>LICENSE_PUBLIC_KEY</code> in config.js<textarea id="pubOut" readonly style="min-height:110px"></textarea></label>
+        </div>
+      </details>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="config.js"></script>
+  <script type="module" src="assets/js/admin.js"></script>
+</body>
+</html>

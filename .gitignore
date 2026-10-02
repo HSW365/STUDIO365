@@ -2,3 +2,5 @@
 .env
 .supabase/
 node_modules/
+studio365-owner-key*.json
+*.studio365

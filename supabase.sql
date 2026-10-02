@@ -37,3 +37,16 @@ create table if not exists studio365_waitlist(
 alter table studio365_waitlist enable row level security;
 drop policy if exists waitlist_insert on studio365_waitlist;
 create policy waitlist_insert on studio365_waitlist for insert to anon, authenticated with check (true);
+
+-- STUDIO365 Pro payment notices (optional; used by the "I paid. Send my key" button).
+-- Visitors can add a row; nobody can read the table through the public API. Read it in the dashboard.
+create table if not exists studio365_pro_requests(
+  id uuid primary key default gen_random_uuid(),
+  email text not null check (email ~* '^[^@\s]+@[^@\s]+\.[^@\s]{2,}$' and length(email) <= 254),
+  cashtag text check (length(cashtag) <= 24),
+  amount numeric check (amount >= 0 and amount <= 1000),
+  created_at timestamptz not null default now()
+);
+alter table studio365_pro_requests enable row level security;
+drop policy if exists pro_requests_insert on studio365_pro_requests;
+create policy pro_requests_insert on studio365_pro_requests for insert to anon, authenticated with check (true);

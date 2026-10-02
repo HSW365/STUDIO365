@@ -296,6 +296,85 @@ export function autotune(x, sr, settings) {
   return { audio, track, curve };
 }
 
+// ---------------------------------------------------------------- harmony + doubles
+// Move a scale note by a number of scale steps (2 steps = a third, 4 = a fifth).
+export function scaleStep(note, root, scaleKey, steps) {
+  const scale = SCALES[scaleKey] || SCALES.chromatic;
+  if (scale.length === 12) return note + ({ 2: 4, '-2': -3, 4: 7, '-4': -7 }[steps] ?? steps);
+  const pc = (((Math.round(note) - root) % 12) + 12) % 12;
+  let idx = scale.indexOf(pc);
+  if (idx < 0) idx = 0;
+  const j = idx + steps;
+  const oct = Math.floor(j / scale.length);
+  return Math.round(note) - pc + scale[((j % scale.length) + scale.length) % scale.length] + 12 * oct;
+}
+
+export const HARMONIES = {
+  off: null,
+  thirdUp: { label: 'Third above', steps: 2 },
+  thirdDown: { label: 'Third below', steps: -2 },
+  fifthUp: { label: 'Fifth above', steps: 4 },
+  octaveUp: { label: 'Octave above', semis: 12 },
+  octaveDown: { label: 'Octave below', semis: -12 },
+};
+
+// A second voice sung in key: every lead note is moved to its harmony note in the same scale.
+export function harmonize(x, sr, settings, mode) {
+  const h = HARMONIES[mode];
+  if (!h) return null;
+  const track = detectPitch(x, sr);
+  const { root = 0, scale = 'minor', keepVibrato = 0.3 } = settings || {};
+  const curve = correctionCurve(track, { root, scale, speedMs: 25, amount: 1, keepVibrato });
+  const n = track.f0.length;
+  const shift = new Float32Array(n);
+  let last = h.semis ?? (h.steps > 0 ? 3.5 : -3.5);
+  for (let i = 0; i < n; i++) {
+    if (track.f0[i]) {
+      const lead = curve.target[i];
+      const want = h.semis != null ? lead + h.semis : scaleStep(lead, root, scale, h.steps);
+      const s = curve.shift[i] + (want - lead);
+      last += (s - last) * 0.5; // settle between notes instead of jumping
+    }
+    shift[i] = last; // breaths and consonants ride along at the last interval
+  }
+  return pitchShiftVarying(x, sr, alignCurve(shift, track), track.hop);
+}
+
+// Two extra voices from one take: a hair sharp and a hair flat, a few ms late, for a wide double.
+export function doubleTrack(x, sr, cents = 9) {
+  const hop = Math.round(sr * 0.005);
+  const frames = Math.ceil(x.length / hop) + 2;
+  const up = new Float32Array(frames).fill(cents / 100), down = new Float32Array(frames).fill(-cents / 100);
+  const late = (y, ms) => { const d = Math.round(sr * ms / 1000); const o = new Float32Array(y.length); o.set(y.subarray(0, y.length - d), d); return o; };
+  return { left: late(pitchShiftVarying(x, sr, up, hop), 13), right: late(pitchShiftVarying(x, sr, down, hop), 22) };
+}
+
+// ---------------------------------------------------------------- noise gate
+// Downward expander keyed to the take itself. amount 0..1: how firmly quiet gaps get pulled down.
+export function gate(x, sr, amount) {
+  if (!(amount > 0)) return x;
+  const n = x.length, frame = Math.max(1, Math.round(sr * 0.01));
+  const frames = Math.ceil(n / frame);
+  const lv = new Float32Array(frames);
+  for (let f = 0; f < frames; f++) lv[f] = rms(x, f * frame, Math.min(n, (f + 1) * frame));
+  const sorted = Float32Array.from(lv).sort();
+  const loud = sorted[Math.min(frames - 1, Math.floor(frames * 0.95))] || 1e-6;
+  const thr = loud * dbToGain(-(46 - amount * 26));   // 46 dB below the loud parts at the lightest, 20 dB at the firmest
+  const floor = dbToGain(-(8 + amount * 40));          // how far closed gaps drop
+  const out = new Float32Array(n);
+  const att = Math.exp(-1 / (sr * 0.003)), rel = Math.exp(-1 / (sr * 0.14));
+  const hold = Math.round(sr * 0.09);
+  let g = floor, held = 0;
+  for (let i = 0; i < n; i++) {
+    const open = lv[(i / frame) | 0] > thr || lv[Math.min(frames - 1, ((i + frame * 2) / frame) | 0)] > thr; // 20 ms lookahead keeps consonants
+    if (open) held = hold; else if (held > 0) held--;
+    const want = open || held > 0 ? 1 : floor;
+    g = want > g ? want + (g - want) * att : want + (g - want) * rel;
+    out[i] = x[i] * g;
+  }
+  return out;
+}
+
 // Shift curve frames are centred at s+win/2; realign so index k ≈ sample k*hop.
 function alignCurve(shift, track) {
   const lag = Math.round(track.win / 2 / track.hop);
@@ -544,6 +623,7 @@ export function limit(channels, sr, ceilingDb = -1, releaseMs = 80, lookaheadMs 
 export function master(channels, sr, targetLufs = -14, ceilingDb = -1) {
   let lufs = integratedLoudness(channels, sr);
   let applied = 0;
+  let reductionDb = 0; // deepest the limiter had to pull down across every pass (negative dB)
   for (let pass = 0; pass < 3 && lufs > -69; pass++) {
     const diff = Math.max(-24, Math.min(24, targetLufs - lufs));
     if (Math.abs(diff) < 0.2) break;
@@ -551,10 +631,11 @@ export function master(channels, sr, targetLufs = -14, ceilingDb = -1) {
     for (const ch of channels) for (let i = 0; i < ch.length; i++) ch[i] *= g;
     applied += diff;
     const red = limit(channels, sr, ceilingDb);
+    reductionDb += red;
     lufs = integratedLoudness(channels, sr);
     if (red > -0.05 && pass > 0) break;
   }
-  const reductionDb = limit(channels, sr, ceilingDb);
+  reductionDb += limit(channels, sr, ceilingDb);
   return { lufs: integratedLoudness(channels, sr), gainDb: applied, reductionDb, peakDb: gainToDb(peak(channels)) };
 }
 

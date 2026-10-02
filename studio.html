@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/base.css">
   <link rel="stylesheet" href="assets/css/studio.css">
+  <link rel="stylesheet" href="assets/css/pro.css">
 </head>
 <body class="studio">
   <header class="topbar">
@@ -28,6 +29,7 @@
       <button class="btn ghost" id="btnLibrary" type="button">Sessions</button>
       <button class="btn ghost" id="btnNew" type="button">New session</button>
       <button class="btn primary" id="btnExport" type="button" disabled>Export</button>
+      <button class="btn pro" id="btnPro" type="button">Go Pro</button>
     </nav>
   </header>
 
@@ -105,6 +107,7 @@
       <div class="tabs" role="tablist">
         <button role="tab" id="tab-tune" aria-controls="panel-tune" aria-selected="true" type="button">Tune</button>
         <button role="tab" id="tab-mix" aria-controls="panel-mix" aria-selected="false" type="button">Mix</button>
+        <button role="tab" id="tab-stack" aria-controls="panel-stack" aria-selected="false" type="button">Stack</button>
         <button role="tab" id="tab-master" aria-controls="panel-master" aria-selected="false" type="button">Master</button>
       </div>
 
@@ -132,6 +135,8 @@
       </section>
 
       <section class="tab-panel" id="panel-mix" role="tabpanel" aria-labelledby="tab-mix" hidden>
+        <label class="field"><span>Vocal preset</span><select id="presetSelect"><option value="">Choose a sound…</option></select></label>
+        <p class="note" id="presetAbout">A preset sets tuning, tone and space in one pick. Adjust anything after.</p>
         <button class="btn ghost full" type="button" id="btnBalance" disabled>Balance vocal to beat</button>
         <h3>Levels</h3>
         <div class="fader" data-key="vocalDb" data-group="mix"><div class="fader-head"><label for="f-vocalDb">Vocal</label><output></output></div><input id="f-vocalDb" type="range" min="-24" max="12" step="0.5"></div>
@@ -144,12 +149,25 @@
         <div class="fader" data-key="presence" data-group="mix"><div class="fader-head"><label for="f-presence">Presence</label><output></output></div><input id="f-presence" type="range" min="-6" max="8" step="0.5"></div>
         <div class="fader" data-key="air" data-group="mix"><div class="fader-head"><label for="f-air">Air</label><output></output></div><input id="f-air" type="range" min="-6" max="8" step="0.5"></div>
         <div class="fader" data-key="sibilance" data-group="mix"><div class="fader-head"><label for="f-sibilance">Tame harsh S sounds</label><output></output></div><input id="f-sibilance" type="range" min="0" max="10" step="0.5"></div>
+        <div class="fader" data-key="gate" data-group="mix"><div class="fader-head"><label for="f-gate">Noise gate</label><output></output></div><input id="f-gate" type="range" min="0" max="100" step="1"></div>
         <h3>Character</h3>
         <div class="fader" data-key="comp" data-group="mix"><div class="fader-head"><label for="f-comp">Compression</label><output></output></div><input id="f-comp" type="range" min="0" max="100" step="1"></div>
         <div class="fader" data-key="warmth" data-group="mix"><div class="fader-head"><label for="f-warmth">Warmth</label><output></output></div><input id="f-warmth" type="range" min="0" max="100" step="1"></div>
         <div class="fader" data-key="reverb" data-group="mix"><div class="fader-head"><label for="f-reverb">Reverb</label><output></output></div><input id="f-reverb" type="range" min="0" max="100" step="1"></div>
         <div class="fader" data-key="delay" data-group="mix"><div class="fader-head"><label for="f-delay">Echo (1/8 note)</label><output></output></div><input id="f-delay" type="range" min="0" max="100" step="1"></div>
         <button class="btn ghost small" type="button" id="btnResetMix">Reset mix</button>
+      </section>
+
+      <section class="tab-panel" id="panel-stack" role="tabpanel" aria-labelledby="tab-stack" hidden>
+        <p class="note">Stack voices behind your lead so the vocal sounds big. Everything here is built from your own take and stays in key.<span class="pro-pill">Pro</span></p>
+        <h3>Doubles</h3>
+        <div class="fader" data-key="double" data-group="stack"><div class="fader-head"><label for="f-double">Wide double</label><output></output></div><input id="f-double" type="range" min="0" max="100" step="1"><div class="fader-scale"><span>Off</span><span>Thick</span></div></div>
+        <h3>Harmony</h3>
+        <label class="field"><span>Harmony voice</span><select id="harmonySelect"></select></label>
+        <div class="fader" data-key="harmonyLevel" data-group="stack"><div class="fader-head"><label for="f-harmonyLevel">Harmony level</label><output></output></div><input id="f-harmonyLevel" type="range" min="0" max="100" step="1"></div>
+        <h3>Your other takes</h3>
+        <p class="note" id="stackTakesNote">Record a second take of the same part, then stack it under the lead as a real double or an ad-lib.</p>
+        <ul class="stack-takes" id="stackTakes"></ul>
       </section>
 
       <section class="tab-panel" id="panel-master" role="tabpanel" aria-labelledby="tab-master" hidden>
@@ -166,6 +184,7 @@
           <div><span>Limiting</span><b id="statGr">–</b></div>
         </div>
         <p class="note">Peaks are held under -1 dB so streaming encoders don't distort your track.</p>
+        <button class="btn ghost full" type="button" id="btnCheck" disabled>Run the A&amp;R365 record check<span class="pro-pill">Pro</span></button>
       </section>
 
       <div class="render-state" id="renderState" aria-live="polite"></div>
@@ -175,6 +194,10 @@
   <dialog id="libraryDialog" class="sheet">
     <form method="dialog" class="sheet-head"><h2>Sessions on this device</h2><button class="icon-btn" aria-label="Close" value="close">✕</button></form>
     <ul class="session-list" id="sessionList"></ul>
+    <div class="sheet-actions">
+      <button class="btn ghost small" type="button" id="btnBackup">Back up this session to a file<span class="pro-pill">Pro</span></button>
+      <button class="btn ghost small" type="button" id="btnRestore">Open a session file<span class="pro-pill">Pro</span></button>
+    </div>
     <p class="sheet-foot" id="storageNote"></p>
   </dialog>
 
@@ -185,15 +208,55 @@
       <button type="button" class="export-opt" data-format="mp3-320"><b>MP3 320</b><span>High quality for sharing and DJs.</span></button>
       <button type="button" class="export-opt" data-format="mp3-128"><b>MP3 128</b><span>Small file for texts and quick previews.</span></button>
       <button type="button" class="export-opt" data-format="stem"><b>Vocal stem WAV</b><span>Your processed vocal alone, for a producer or engineer.</span></button>
+      <button type="button" class="export-opt pro-opt" id="btnReleasePack"><b>Release pack<span class="pro-pill">Pro</span></b><span>Everything a distributor asks for in one ZIP: masters, tagged MP3, 3000 px cover and a release sheet.</span></button>
     </div>
     <div class="export-progress" id="exportProgress" hidden><div class="bar"><i id="exportBar"></i></div><p id="exportMsg">Rendering</p></div>
   </dialog>
 
+  <dialog id="checkDialog" class="sheet wide">
+    <form method="dialog" class="sheet-head"><h2>A&amp;R365 record check</h2><button class="icon-btn" aria-label="Close" value="close">✕</button></form>
+    <div class="check-top">
+      <div class="check-score"><b id="checkScore">–</b><span>out of 100</span></div>
+      <div><p class="check-verdict" id="checkVerdict">Listening…</p><p class="note" id="checkSub">Measured on the mix you hear right now.</p></div>
+    </div>
+    <ul class="check-list" id="checkList"></ul>
+  </dialog>
+
+  <dialog id="releaseDialog" class="sheet wide">
+    <form method="dialog" class="sheet-head"><h2>Release pack</h2><button class="icon-btn" aria-label="Close" value="close">✕</button></form>
+    <form class="release-form" id="releaseForm" novalidate>
+      <div class="release-cover">
+        <button type="button" class="cover-drop" id="coverDrop" aria-label="Choose cover art"><img id="coverPreview" alt="" hidden><span id="coverHint">Add cover art<small>Square JPG or PNG, 3000 px is best</small></span></button>
+        <p class="note" id="coverNote"></p>
+      </div>
+      <div class="release-fields">
+        <label class="field"><span>Song title</span><input id="relTitle" maxlength="120" required autocomplete="off"></label>
+        <label class="field"><span>Artist name</span><input id="relArtist" maxlength="120" required autocomplete="off"></label>
+        <label class="field"><span>Featured artists <i>optional</i></span><input id="relFeat" maxlength="160" autocomplete="off"></label>
+        <div class="field-row two">
+          <label class="field"><span>Genre</span><input id="relGenre" maxlength="60" list="genreList" autocomplete="off"></label>
+          <label class="field"><span>Lyrics</span><select id="relExplicit"><option value="clean">Clean</option><option value="explicit">Explicit</option><option value="instrumental">No lyrics</option></select></label>
+        </div>
+        <label class="field"><span>Written and produced by <i>optional</i></span><input id="relCredits" maxlength="200" autocomplete="off" placeholder="Writers, producer, beat credit"></label>
+        <label class="check-row"><input type="checkbox" id="relStem"><span>Include the vocal stem</span></label>
+      </div>
+      <datalist id="genreList"><option>Hip-Hop/Rap</option><option>R&amp;B/Soul</option><option>Pop</option><option>Trap</option><option>Drill</option><option>Afrobeats</option><option>Latin</option><option>Reggaeton</option><option>Gospel</option><option>Alternative</option><option>Dance</option><option>Country</option><option>Spoken Word</option></datalist>
+      <div class="release-foot">
+        <p class="note" id="relMsg" role="status" aria-live="polite">You get one ZIP: 24-bit master, 16-bit 44.1 kHz master, tagged MP3 320, cover at 3000 px and a release sheet to copy from when you upload.</p>
+        <div class="export-progress" id="relProgress" hidden><div class="bar"><i id="relBar"></i></div></div>
+        <button class="btn primary" type="submit" id="relBuild">Build release pack</button>
+      </div>
+    </form>
+  </dialog>
+
+  <input type="file" id="fileCover" accept="image/jpeg,image/png,image/webp" hidden>
+  <input type="file" id="fileSession" accept=".studio365" hidden>
   <input type="file" id="fileBeat" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden>
   <input type="file" id="fileVocal" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js" defer></script>
+  <script src="config.js"></script>
   <script type="module" src="assets/js/studio.js"></script>
 </body>
 </html>

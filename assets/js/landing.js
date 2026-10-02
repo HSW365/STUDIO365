@@ -1,4 +1,5 @@
-// STUDIO365 landing: live A/B pitch-correction demo, early-access capture, nav state.
+// STUDIO365 landing: live A/B pitch-correction demo, Pro checkout, nav state.
+import { initPro, isPro, openPro, prices } from './pro.js';
 const $ = (id) => document.getElementById(id);
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const A_MINOR = [0, 2, 3, 5, 7, 8, 10].map((p) => (p + 9) % 12);
@@ -239,37 +240,17 @@ document.fonts?.ready.then(draw);
 draw();
 document.addEventListener('visibilitychange', () => { if (document.hidden && playing) stop(); });
 
-// ---------------------------------------------------------------- early access
-const cfg = window.STUDIO365_CONFIG || {};
-const hasSupabase = cfg.SUPABASE_URL && !/REPLACE/.test(cfg.SUPABASE_URL) && cfg.SUPABASE_ANON_KEY && !/REPLACE/.test(cfg.SUPABASE_ANON_KEY);
-$('waitlist').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const input = $('wlEmail'), msg = $('wlMsg'), btn = e.target.querySelector('button');
-  const email = input.value.trim().toLowerCase();
-  msg.className = 'form-msg';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.textContent = 'Enter a full email address, like you@email.com.'; msg.classList.add('err'); input.focus(); return; }
-  btn.disabled = true; msg.textContent = 'Adding you…';
-  try {
-    if (hasSupabase) {
-      const r = await fetch(`${cfg.SUPABASE_URL}/rest/v1/studio365_waitlist`, {
-        method: 'POST',
-        headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: `Bearer ${cfg.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ email, source: 'landing' }),
-      });
-      if (!r.ok && r.status !== 409) throw new Error(String(r.status));
-      msg.textContent = "You're on the list. We'll email you when Pro opens, with your $15 first month.";
-      msg.classList.add('ok'); input.value = '';
-    } else {
-      const body = encodeURIComponent(`Add me to STUDIO365 Pro early access.\n\nEmail: ${email}`);
-      window.location.href = `mailto:hsw365media@gmail.com?subject=${encodeURIComponent('STUDIO365 Pro early access')}&body=${body}`;
-      msg.textContent = 'Your email app opened with the request ready. Hit send to lock in your spot.';
-      msg.classList.add('ok');
-    }
-  } catch {
-    msg.textContent = "That didn't go through. Check your connection and try again.";
-    msg.classList.add('err');
-  } finally { btn.disabled = false; }
-});
+// ---------------------------------------------------------------- Pro
+const fill = (k, v) => document.querySelectorAll(`[data-price="${k}"]`).forEach((el) => { el.textContent = v; });
+fill('monthly', prices.monthly); fill('first', prices.first); fill('tag', prices.cashtag);
+const paintPro = (st) => {
+  $('btnGoPro').textContent = st.pro ? 'You are Pro. Open the studio' : 'Go Pro with Cash App';
+  $('btnHaveKey').hidden = !!st.pro;
+  if (st.pro) $('proNote').textContent = `Pro is on for this device until ${new Date(st.expires).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}.`;
+};
+initPro({ onChange: paintPro });
+$('btnGoPro').addEventListener('click', () => { if (isPro()) window.location.href = 'studio.html'; else openPro(); });
+$('btnHaveKey').addEventListener('click', () => { openPro(); setTimeout(() => document.getElementById('proKeyInput')?.focus(), 50); });
 
 // ---------------------------------------------------------------- chrome
 const nav = document.querySelector('.nav');

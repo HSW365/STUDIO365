@@ -1,5 +1,6 @@
 // Background DSP so long takes never freeze the studio.
-import { autotune, detectKey, detectTempo, toMono, master, detectPitch } from './dsp.js';
+import { autotune, detectKey, detectTempo, toMono, master, detectPitch, harmonize, doubleTrack } from './dsp.js';
+import { recordCheck } from './check.js';
 
 self.onmessage = (e) => {
   const { id, type, payload } = e.data;
@@ -16,6 +17,16 @@ self.onmessage = (e) => {
     } else if (type === 'analyzeBeat') {
       const mono = toMono(payload.channels);
       result = { key: detectKey(mono, payload.sr), bpm: detectTempo(mono, payload.sr) };
+    } else if (type === 'harmony') {
+      const audio = harmonize(payload.x, payload.sr, payload.settings, payload.mode);
+      result = { audio };
+      transfer = [audio.buffer];
+    } else if (type === 'double') {
+      const d = doubleTrack(payload.x, payload.sr);
+      result = d;
+      transfer = [d.left.buffer, d.right.buffer];
+    } else if (type === 'check') {
+      result = recordCheck(payload);
     } else if (type === 'master') {
       const { channels, sr, target, ceiling } = payload;
       const stats = master(channels, sr, target, ceiling);

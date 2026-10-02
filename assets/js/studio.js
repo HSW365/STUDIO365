@@ -1,11 +1,17 @@
 // STUDIO365 studio — record, tune, mix, master, export. Everything runs in the browser; sessions live in IndexedDB.
 import * as D from './dsp.js';
-import { renderMix, balanceVocal, DEFAULT_MIX } from './mixer.js';
+import { renderMix, DEFAULT_MIX } from './mixer.js';
+import { vocalBeatBalance, BALANCE_TARGET } from './check.js';
 import * as Store from './store.js';
+import { initPro, isPro, requirePro, openPro } from './pro.js';
+import { PRESETS } from './presets.js';
+import * as Pack from './pack.js';
 
 const $ = (id) => document.getElementById(id);
 const DEFAULT_TUNE = { enabled: true, root: 9, scale: 'minor', speedMs: 15, amount: 100, keepVibrato: 30 };
 const DEFAULT_MASTER = { enabled: true, target: -14, ceiling: -1 };
+const DEFAULT_STACK = { double: 0, harmony: 'off', harmonyLevel: 50, takes: {} };
+const DEFAULTS = { tune: DEFAULT_TUNE, mix: DEFAULT_MIX, stack: DEFAULT_STACK };
 const LAST_KEY = 'studio365:last-session';
 
 // ------------------------------------------------------------------ state
@@ -21,6 +27,8 @@ let recResolve = null;
 let saveTimer = null, renderTimer = null, tuneTimer = null;
 let peakHold = 0, peakHoldTime = 0;
 const peaksCache = new WeakMap();
+const gateCache = new WeakMap();   // audio array -> { amount, out }
+let stackCache = { double: null, harmony: null, takes: new Map() };
 
 function uid() { return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); }
 function newProject() {
@@ -28,6 +36,7 @@ function newProject() {
     id: uid(), name: 'Untitled session', created: Date.now(), updated: Date.now(), sr: null,
     bpm: 90, key: null, beat: null, takes: [], activeTake: null,
     tune: { ...DEFAULT_TUNE }, mix: { ...DEFAULT_MIX }, master: { ...DEFAULT_MASTER }, tuned: null,
+    stack: { ...DEFAULT_STACK, takes: {} }, preset: '', release: null, cover: null,
   };
 }
 
@@ -100,9 +109,68 @@ function vocalSignal() {
   if (P.tune.enabled && P.tuned && P.tuned.sig === tuneSig(t)) return P.tuned.audio;
   return t.audio;
 }
+// Noise gate sits in front of the whole chain. Cached per take so faders stay quick.
+function gated(x) {
+  const amount = (P.mix.gate || 0) / 100;
+  if (!x || !amount) return x;
+  const c = gateCache.get(x);
+  if (c && c.amount === amount) return c.out;
+  const out = D.gate(x, P.sr, amount);
+  gateCache.set(x, { amount, out });
+  return out;
+}
+const stackedTakes = () => P.takes.filter((t) => t.id !== P.activeTake && P.stack.takes[t.id]?.on);
+const stackActive = () => isPro() && (P.stack.double > 0 || (P.stack.harmony !== 'off' && P.stack.harmonyLevel > 0) || stackedTakes().length > 0);
+
+// Extra voices behind the lead: generated doubles, a generated harmony, and any other takes the artist stacked.
+async function buildLayers() {
+  if (!stackActive()) return [];
+  const t = activeTake(), S = P.stack, out = [];
+  const base = P.mix.vocalOffsetMs;
+  if (t) {
+    const lead = gated(vocalSignal());
+    const off = base + (t.start || 0) * 1000;
+    if (S.double > 0) {
+      const sig = JSON.stringify([t.id, P.tune.enabled && P.tuned ? P.tuned.sig : 'raw', P.mix.gate]);
+      if (!stackCache.double || stackCache.double.sig !== sig) {
+        setRenderState('Building your doubles…', true);
+        stackCache.double = { sig, ...(await work('double', { x: lead.slice(), sr: P.sr })) };
+      }
+      const db = -20 + S.double * 0.15;
+      out.push({ audio: stackCache.double.left, offsetMs: off, db, pan: -72 }, { audio: stackCache.double.right, offsetMs: off, db, pan: 72 });
+    }
+    if (S.harmony !== 'off' && S.harmonyLevel > 0) {
+      const sig = JSON.stringify([t.id, S.harmony, P.tune.root, P.tune.scale, P.tune.keepVibrato]);
+      if (!stackCache.harmony || stackCache.harmony.sig !== sig) {
+        setRenderState('Singing the harmony…', true);
+        const r = await work('harmony', { x: t.audio.slice(), sr: P.sr, mode: S.harmony, settings: { root: P.tune.root, scale: P.tune.scale, keepVibrato: P.tune.keepVibrato / 100 } });
+        stackCache.harmony = { sig, audio: r.audio };
+      }
+      out.push({ audio: gated(stackCache.harmony.audio), offsetMs: off + 9, db: -22 + S.harmonyLevel * 0.17, pan: 18 });
+    }
+  }
+  for (const tk of stackedTakes()) {
+    const st = P.stack.takes[tk.id];
+    let audio = tk.audio;
+    if (P.tune.enabled) {
+      const sig = tuneSig(tk);
+      let c = stackCache.takes.get(tk.id);
+      if (!c || c.sig !== sig) {
+        setRenderState(`Tuning ${tk.name} for the stack…`, true);
+        const r = await work('autotune', { x: tk.audio.slice(), sr: P.sr, settings: { root: P.tune.root, scale: P.tune.scale, speedMs: P.tune.speedMs, amount: P.tune.amount / 100, keepVibrato: P.tune.keepVibrato / 100 } });
+        c = { sig, audio: r.audio }; stackCache.takes.set(tk.id, c);
+      }
+      audio = c.audio;
+    }
+    out.push({ audio: gated(audio), offsetMs: base + (tk.start || 0) * 1000, db: st.db ?? -8, pan: st.pan ?? 0 });
+  }
+  return out;
+}
+
 function renderSig() {
   const t = activeTake();
   return JSON.stringify({
+    stack: stackActive() ? P.stack : null,
     beat: P.beat ? P.beat.id : null, take: t ? t.id : null, start: t ? t.start : 0,
     tuned: t && P.tune.enabled && P.tuned && P.tuned.sig === tuneSig(t) ? P.tuned.sig : 'raw',
     mix: P.mix, master: P.master, bpm: P.bpm,
@@ -197,9 +265,13 @@ async function runRender() {
   setRenderState('Mixing…', true);
   try {
     const t = activeTake();
-    const vocal = vocalSignal();
+    const vocal = gated(vocalSignal());
     const mix = { ...P.mix, vocalOffsetMs: P.mix.vocalOffsetMs + (t ? (t.start || 0) * 1000 : 0) };
-    let channels = await renderMix({ sr: P.sr, beat: P.beat ? P.beat.channels : null, vocal, mix, bpm: P.bpm });
+    const layers = await buildLayers();
+    if (token !== renderToken) return;
+    if (sig !== renderSig()) { scheduleRender(0); return; }
+    setRenderState('Mixing…', true);
+    let channels = await renderMix({ sr: P.sr, beat: P.beat ? P.beat.channels : null, vocal, mix, bpm: P.bpm, layers });
     if (token !== renderToken) return;
     let stats = null;
     if (P.master.enabled) {
@@ -228,7 +300,8 @@ async function runRender() {
 function readyText() {
   const t = activeTake();
   if (!t) return 'Beat loaded. Press Record when you are ready.';
-  return `Mix is current. ${P.master.enabled ? 'Master on.' : 'Master off.'}`;
+  const n = stackActive() ? (P.stack.double > 0 ? 2 : 0) + (P.stack.harmony !== 'off' && P.stack.harmonyLevel > 0 ? 1 : 0) + stackedTakes().length : 0;
+  return `Mix is current. ${n ? `${n} stacked voice${n === 1 ? '' : 's'}. ` : ''}${P.master.enabled ? 'Master on.' : 'Master off.'}`;
 }
 function updateStats() {
   const s = mixCache?.stats;
@@ -580,18 +653,58 @@ function renderTakes() {
       P.takes = P.takes.filter((x) => x.id !== t.id);
       if (P.activeTake === t.id) P.activeTake = P.takes.length ? P.takes[P.takes.length - 1].id : null;
       if (P.tuned && P.tuned.takeId === t.id) P.tuned = null;
+      delete P.stack.takes[t.id]; stackCache.takes.delete(t.id);
       afterTakesChanged();
     });
     li.append(radio, name, len, del);
     list.append(li);
   }
+  renderStackTakes();
   updateBeatUi();
+}
+
+function renderStackTakes() {
+  const list = $('stackTakes');
+  list.textContent = '';
+  const others = P.takes.filter((t) => t.id !== P.activeTake);
+  $('stackTakesNote').hidden = others.length > 0;
+  for (const t of others) {
+    const st = P.stack.takes[t.id] || { on: false, db: -8, pan: 0 };
+    const li = document.createElement('li');
+    li.className = 'stack-take' + (st.on && isPro() ? ' on' : '');
+    const head = document.createElement('div'); head.className = 'stack-take-head';
+    const nm = document.createElement('span'); nm.textContent = t.name;
+    const tg = document.createElement('button'); tg.type = 'button'; tg.className = 'stack-toggle';
+    tg.setAttribute('aria-pressed', String(!!st.on && isPro())); tg.textContent = st.on && isPro() ? 'Stacked' : 'Stack it';
+    tg.addEventListener('click', () => {
+      if (!requirePro('Vocal stacks')) return;
+      // alternate sides so two stacked takes spread left and right
+      const side = stackedTakes().length % 2 ? 35 : -35;
+      P.stack.takes[t.id] = { db: -8, pan: side, ...P.stack.takes[t.id], on: !st.on };
+      renderStackTakes(); updateBeatUi(); markDirty(); scheduleRender(0);
+    });
+    head.append(nm, tg); li.append(head);
+    if (st.on && isPro()) {
+      const mini = (label, key, min, max, step, fmt) => {
+        const row = document.createElement('label'); row.className = 'mini';
+        const sp = document.createElement('span'); sp.textContent = label;
+        const inp = document.createElement('input'); inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = st[key];
+        const o = document.createElement('output'); o.textContent = fmt(st[key]);
+        inp.addEventListener('input', () => { P.stack.takes[t.id][key] = Number(inp.value); o.textContent = fmt(Number(inp.value)); markDirty(); scheduleRender(); });
+        row.append(sp, inp, o); return row;
+      };
+      li.append(mini('Level', 'db', -24, 0, 0.5, (v) => `${v.toFixed(1)} dB`), mini('Pan', 'pan', -100, 100, 1, (v) => fmtVal('pan', v)));
+    }
+    list.append(li);
+  }
 }
 
 function updateBeatUi() {
   $('beatName').textContent = P.beat ? P.beat.name : 'No beat loaded';
   const t = activeTake();
-  $('vocalName').textContent = t ? t.name : 'No take yet';
+  const extra = stackActive() ? stackedTakes().length : 0;
+  $('vocalName').textContent = t ? t.name + (extra ? ` + ${extra} stacked` : '') : 'No take yet';
+  $('btnCheck').disabled = !mixCache;
   $('dropHint').hidden = !!P.beat;
   $('btnDetectKey').disabled = !P.beat;
   $('btnBalance').disabled = !(P.beat && t);
@@ -605,6 +718,7 @@ function updateTransport() {
   btn.setAttribute('aria-label', playing ? 'Stop' : 'Play');
   btn.disabled = recording || (!P.beat && !activeTake());
   $('btnExport').disabled = !mixCache || recording;
+  $('btnCheck').disabled = !mixCache || recording;
   $('btnRewind').disabled = recording;
   if (!playing && !recording) $('clock').textContent = fmtTime(position);
 }
@@ -617,6 +731,7 @@ function fmtVal(key, v) {
     case 'hpf': return `${v} Hz`;
     case 'vocalOffsetMs': return v == 0 ? 'On grid' : `${v > 0 ? 'Later' : 'Earlier'} ${Math.abs(v)} ms`;
     case 'speedMs': return v == 0 ? 'Instant' : `${v} ms`;
+    case 'gate': case 'double': case 'harmonyLevel': return v == 0 ? 'Off' : `${v}%`;
     default: return `${v}%`;
   }
 }
@@ -634,6 +749,9 @@ function syncControls() {
   $('tuneOn').checked = P.tune.enabled;
   $('tuneRoot').value = String(P.tune.root);
   $('tuneScale').value = P.tune.scale;
+  $('harmonySelect').value = P.stack.harmony;
+  $('presetSelect').value = P.preset || '';
+  showPresetAbout();
   $('masterOn').checked = P.master.enabled;
   document.querySelectorAll('input[name="target"]').forEach((r) => { r.checked = Number(r.value) === P.master.target; });
   $('bpm').value = P.bpm;
@@ -648,6 +766,7 @@ function bindControls() {
   document.querySelectorAll('.fader').forEach((f) => {
     const input = f.querySelector('input'); const group = f.dataset.group, key = f.dataset.key;
     input.addEventListener('input', () => {
+      if (group === 'stack' && !isPro()) { input.value = P.stack[key]; paintFader(input); openPro('Vocal stacks'); return; }
       P[group][key] = Number(input.value);
       f.querySelector('output').textContent = fmtVal(key, P[group][key]);
       paintFader(input);
@@ -655,7 +774,7 @@ function bindControls() {
       markDirty();
     });
     input.addEventListener('dblclick', () => {
-      const def = group === 'tune' ? DEFAULT_TUNE[key] : DEFAULT_MIX[key];
+      const def = DEFAULTS[group][key];
       input.value = def; input.dispatchEvent(new Event('input'));
     });
   });
@@ -676,14 +795,30 @@ function bindControls() {
     try { await analyzeBeat(true); } catch (err) { toast(err.message, true); }
     scheduleRender(0);
   });
-  $('btnBalance').addEventListener('click', () => {
-    const v = vocalSignal();
-    P.mix.vocalDb = balanceVocal(P.beat.channels, v, P.sr) + P.mix.beatDb;
-    P.mix.vocalDb = Math.max(-24, Math.min(12, P.mix.vocalDb));
-    syncControls(); markDirty(); scheduleRender(0);
-    toast(`Vocal set to ${fmtVal('vocalDb', P.mix.vocalDb)} so it sits on top of the beat.`);
-  });
+  $('btnBalance').addEventListener('click', balanceNow);
   $('btnResetMix').addEventListener('click', () => { P.mix = { ...DEFAULT_MIX }; syncControls(); markDirty(); scheduleRender(0); });
+
+  // stack + presets
+  Object.entries(D.HARMONIES).forEach(([k, h]) => $('harmonySelect').add(new Option(h ? h.label : 'No harmony', k)));
+  $('harmonySelect').addEventListener('change', (e) => {
+    if (!requirePro('Auto harmony')) { e.target.value = P.stack.harmony; return; }
+    P.stack.harmony = e.target.value; markDirty(); scheduleRender(0);
+  });
+  const free = document.createElement('optgroup'); free.label = 'Included';
+  const paid = document.createElement('optgroup'); paid.label = 'Pro';
+  PRESETS.forEach((p) => (p.pro ? paid : free).append(new Option(p.name, p.id)));
+  $('presetSelect').append(free, paid);
+  $('presetSelect').addEventListener('change', (e) => applyPreset(e.target.value));
+  $('btnPro').addEventListener('click', () => openPro());
+  $('btnCheck').addEventListener('click', runCheck);
+  $('btnReleasePack').addEventListener('click', openRelease);
+  $('releaseForm').addEventListener('submit', (e) => { e.preventDefault(); buildRelease(); });
+  $('releaseForm').addEventListener('input', () => { const m = $('relMsg'); if (m.classList.contains('err')) { m.className = 'note'; m.textContent = ''; } });
+  $('coverDrop').addEventListener('click', () => $('fileCover').click());
+  $('fileCover').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) setCover(f); });
+  $('btnBackup').addEventListener('click', backupSession);
+  $('btnRestore').addEventListener('click', () => { if (requirePro('Session backup')) $('fileSession').click(); });
+  $('fileSession').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) restoreSession(f); });
 
   // tabs
   const tabs = [...document.querySelectorAll('[role="tab"]')];
@@ -751,7 +886,7 @@ function bindControls() {
     toast('New session started. Your last one is saved under Sessions.');
   });
   $('btnExport').addEventListener('click', () => { $('exportProgress').hidden = true; $('exportDialog').showModal(); });
-  document.querySelectorAll('.export-opt').forEach((b) => b.addEventListener('click', () => exportAs(b.dataset.format)));
+  document.querySelectorAll('.export-opt[data-format]').forEach((b) => b.addEventListener('click', () => exportAs(b.dataset.format)));
 
   window.addEventListener('resize', () => { drawTimeline(); drawPitch(); });
   window.addEventListener('beforeunload', (e) => { if (recording) { e.preventDefault(); e.returnValue = ''; } });
@@ -804,6 +939,9 @@ async function openLibrary() {
 
 function loadIntoUi(p) {
   P = p;
+  P.stack = { ...DEFAULT_STACK, ...P.stack, takes: { ...(P.stack?.takes || {}) } };
+  P.preset = P.preset || ''; P.release = P.release || null; P.cover = P.cover || null;
+  stackCache = { double: null, harmony: null, takes: new Map() };
   P.tune = { ...DEFAULT_TUNE, ...P.tune };
   P.mix = { ...DEFAULT_MIX, ...P.mix };
   P.master = { ...DEFAULT_MASTER, ...P.master };
@@ -813,12 +951,274 @@ function loadIntoUi(p) {
   else setRenderState('Load a beat or record a take to start.');
 }
 
+
+// ------------------------------------------------------------------ balance
+// Measures the finished vocal against the beat and sets the vocal fader so the words sit on top.
+async function balanceNow() {
+  const t = activeTake();
+  if (!t || !P.beat) return;
+  const btn = $('btnBalance'); btn.disabled = true;
+  try {
+    const mix = { ...P.mix, vocalOffsetMs: P.mix.vocalOffsetMs + (t.start || 0) * 1000 };
+    const stem = await renderMix({ sr: P.sr, beat: null, vocal: gated(vocalSignal()), mix, bpm: P.bpm, vocalOnly: true });
+    const d = vocalBeatBalance(stem, P.beat.channels, P.mix.beatDb, P.sr);
+    if (d == null) { toast('There is no vocal sound in this take to balance.'); return; }
+    P.mix.vocalDb = Math.max(-24, Math.min(12, Math.round((P.mix.vocalDb + BALANCE_TARGET - d) * 2) / 2));
+    syncControls(); markDirty(); scheduleRender(0);
+    toast(`Vocal set to ${fmtVal('vocalDb', P.mix.vocalDb)} so it sits on top of the beat.`);
+  } catch (err) { toast(`Couldn't balance: ${err.message}`, true); }
+  finally { updateBeatUi(); }
+}
+
+// ------------------------------------------------------------------ presets
+function showPresetAbout() {
+  const p = PRESETS.find((x) => x.id === P.preset);
+  $('presetAbout').textContent = p ? p.about : 'A preset sets tuning, tone and space in one pick. Adjust anything after.';
+}
+function applyPreset(id) {
+  const p = PRESETS.find((x) => x.id === id);
+  if (!p) { P.preset = ''; showPresetAbout(); markDirty(); return; }
+  if (p.pro && !requirePro(`The ${p.name} preset`)) { $('presetSelect').value = P.preset || ''; return; }
+  P.tune = { ...P.tune, enabled: true, ...p.tune };
+  P.mix = { ...P.mix, ...p.mix };
+  if (p.stack && isPro()) P.stack = { ...P.stack, ...p.stack };
+  P.preset = id;
+  syncControls(); markDirty(); drawTimeline(); scheduleTune(0);
+  toast(`${p.name} is on. ${p.about}`);
+}
+
+// ------------------------------------------------------------------ Pro state
+function onProChange() {
+  document.body.classList.toggle('is-pro', isPro());
+  const b = $('btnPro');
+  b.textContent = isPro() ? 'Pro' : 'Go Pro';
+  b.classList.toggle('on', isPro());
+  b.title = isPro() ? 'Your Pro membership' : 'Unlock stacks, pro presets, record check and release packs';
+  renderStackTakes(); updateBeatUi();
+  if (P.beat || P.takes.length) scheduleRender(0);
+}
+
+// resolves once the mix on screen matches the current settings
+async function settled(timeout = 120000) {
+  const t0 = performance.now();
+  await new Promise((r) => setTimeout(r, 300));
+  while (performance.now() - t0 < timeout) {
+    const t = activeTake();
+    const tuneDone = !t || !P.tune.enabled || (P.tuned && P.tuned.sig === tuneSig(t));
+    if (tuneDone && mixCache && mixCache.sig === renderSig()) return true;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return false;
+}
+
+// ------------------------------------------------------------------ A&R365 record check
+async function runCheck() {
+  if (!requirePro('The A&R365 record check')) return;
+  if (!mixCache) return;
+  const dlg = $('checkDialog');
+  $('checkScore').textContent = '–'; $('checkVerdict').textContent = 'Listening…'; $('checkList').textContent = '';
+  if (!dlg.open) dlg.showModal();
+  try {
+    await settled();
+    const t = activeTake();
+    const layers = await buildLayers();
+    let stem = null;
+    if (t && P.beat) {
+      const mix = { ...P.mix, vocalOffsetMs: P.mix.vocalOffsetMs + (t.start || 0) * 1000 };
+      stem = await renderMix({ sr: P.sr, beat: null, vocal: gated(vocalSignal()), mix, bpm: P.bpm, vocalOnly: true, layers });
+    }
+    let f0 = null, shift = null;
+    if (t) {
+      if (P.tuned && P.tuned.takeId === t.id && P.tuned.sig === tuneSig(t)) { f0 = P.tuned.f0; shift = P.tune.enabled ? P.tuned.shift : null; }
+      else f0 = (await work('pitch', { x: t.audio.slice(), sr: P.sr })).f0;
+    }
+    const r = await work('check', {
+      sr: P.sr, master: mixCache.channels, stats: mixCache.stats, target: P.master.target, masterOn: P.master.enabled,
+      take: t ? t.audio : null, f0, shift, tune: { root: P.tune.root, scale: P.tune.scale, enabled: P.tune.enabled },
+      vocalStem: stem, beat: P.beat ? P.beat.channels : null, beatDb: P.mix.beatDb, gateAmount: P.mix.gate, stacked: layers.length > 0,
+    });
+    $('checkScore').textContent = r.score;
+    $('checkVerdict').textContent = r.verdict;
+    const fixes = {
+      balance: ['Balance it for me', balanceNow],
+      gate: ['Turn on the noise gate', () => { P.mix.gate = 40; syncControls(); markDirty(); scheduleRender(0); }],
+      master: ['Turn the master on', () => { P.master.enabled = true; syncControls(); markDirty(); scheduleRender(0); }],
+      tune: ['Turn tuning on', () => { P.tune.enabled = true; syncControls(); markDirty(); scheduleTune(0); }],
+      key: P.beat ? ['Read the key again', () => analyzeBeat(true)] : null,
+    };
+    for (const it of r.items) {
+      const li = document.createElement('li'); li.className = `check-item ${it.state}`;
+      const h = document.createElement('h3'); h.textContent = it.label;
+      const v = document.createElement('span'); v.className = 'val'; v.textContent = it.value;
+      const p = document.createElement('p'); p.textContent = it.detail;
+      li.append(h, v, p);
+      const fx = it.fix && fixes[it.fix];
+      if (fx) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ghost small'; b.textContent = fx[0];
+        b.addEventListener('click', async () => { b.disabled = true; b.textContent = 'Fixing…'; await fx[1](); await settled(); runCheck(); });
+        li.append(b);
+      }
+      $('checkList').append(li);
+    }
+  } catch (err) {
+    console.error(err);
+    $('checkVerdict').textContent = 'The check could not finish.';
+    toast(`Record check failed: ${err.message}`, true);
+  }
+}
+
+// ------------------------------------------------------------------ release pack
+function openRelease() {
+  if (!requirePro('The release pack')) return;
+  $('exportDialog').close();
+  const r = P.release || {};
+  $('relTitle').value = r.title || (P.name === 'Untitled session' ? '' : P.name);
+  $('relArtist').value = r.artist || localStorage.getItem('studio365:artist') || '';
+  $('relFeat').value = r.feat || ''; $('relGenre').value = r.genre || ''; $('relExplicit').value = r.explicit || 'clean';
+  $('relCredits').value = r.credits || ''; $('relStem').checked = !!r.stem;
+  paintCover();
+  $('relProgress').hidden = true;
+  $('relMsg').className = 'note';
+  $('relMsg').textContent = 'You get one ZIP: 24-bit master, 16-bit 44.1 kHz master, tagged MP3 320, cover at 3000 px and a release sheet to copy from when you upload.';
+  $('releaseDialog').showModal();
+}
+function paintCover() {
+  const c = P.cover;
+  $('coverPreview').hidden = !c; $('coverHint').hidden = !!c;
+  if (c) $('coverPreview').src = c.preview;
+  $('coverNote').textContent = !c ? 'No cover yet. Most distributors will not take a release without one.'
+    : c.sourceSide < 1400 ? `Your image is ${c.sourceSide} px. It was enlarged to 3000 px and may look soft. Use one at least 1400 px, ideally 3000.`
+      : c.sourceSide < 3000 ? `Your image is ${c.sourceSide} px, enlarged to 3000 px. It will pass, and a 3000 px original looks sharper.`
+        : 'Cover is 3000 px square. Ready.';
+}
+async function setCover(file) {
+  try { P.cover = await Pack.squareCover(file, 3000); paintCover(); markDirty(); }
+  catch (err) { toast(err.message, true); }
+}
+function ditherTo16(channels) {
+  // triangular dither at one 16-bit step so quiet tails fade into hiss instead of grit
+  const q = 1 / 32768;
+  return channels.map((c) => { const o = new Float32Array(c.length); for (let i = 0; i < c.length; i++) o[i] = c[i] + (Math.random() - Math.random()) * q; return o; });
+}
+async function buildRelease() {
+  const msg = $('relMsg'), bar = $('relBar'), btn = $('relBuild');
+  const title = $('relTitle').value.trim(), artist = $('relArtist').value.trim();
+  msg.className = 'note';
+  if (!title || !artist) { msg.textContent = 'Add the song title and artist name. They go into the files and the release sheet.'; msg.classList.add('err'); (title ? $('relArtist') : $('relTitle')).focus(); return; }
+  P.release = { title, artist, feat: $('relFeat').value.trim(), genre: $('relGenre').value.trim(), explicit: $('relExplicit').value, credits: $('relCredits').value.trim(), stem: $('relStem').checked };
+  localStorage.setItem('studio365:artist', artist);
+  markDirty();
+  const R = P.release;
+  btn.disabled = true; $('relProgress').hidden = false;
+  const step = (p, text) => { bar.style.width = `${p}%`; msg.textContent = text; };
+  try {
+    step(5, 'Rendering the master…');
+    const channels = await renderFinal(false);
+    const seconds = channels[0].length / P.sr;
+    const base = slug(`${artist}-${title}`);
+    const fullTitle = R.feat ? `${title} (feat. ${R.feat})` : title;
+    const files = [];
+    step(25, 'Writing the 24-bit master…');
+    files.push({ name: `${base}-master-24bit-${Math.round(P.sr / 100) / 10}k.wav`, bytes: D.encodeWav(channels, P.sr, 24) });
+    step(35, 'Writing the 16-bit 44.1 kHz master…');
+    const c44 = await resample(channels, P.sr, 44100);
+    D.limit(c44, 44100, -1);
+    files.push({ name: `${base}-master-16bit-44k.wav`, bytes: D.encodeWav(ditherTo16(c44), 44100, 16) });
+    step(45, 'Encoding the MP3…');
+    const mp3 = await encodeMp3(channels, P.sr, 320, (p) => { bar.style.width = `${45 + p * 30}%`; });
+    const keyName = `${D.NOTE_NAMES[P.tune.root]}${P.tune.scale.toLowerCase().includes('minor') ? 'm' : ''}`;
+    files.push({ name: `${base}-320.mp3`, bytes: Pack.tagMp3(mp3, { title: fullTitle, artist, album: title, genre: R.genre, year: new Date().getFullYear(), bpm: P.beat ? P.bpm : null, key: P.beat || activeTake() ? keyName : null, coverJpeg: P.cover ? P.cover.bytes : null }) });
+    if (P.cover) files.push({ name: 'cover-3000.jpg', bytes: P.cover.bytes });
+    if (R.stem && activeTake()) {
+      step(80, 'Rendering the vocal stem…');
+      files.push({ name: `${base}-vocal-stem.wav`, bytes: D.encodeWav(await renderFinal(true), P.sr, 24) });
+    }
+    step(90, 'Writing the release sheet…');
+    const s = mixCache?.stats;
+    const lyr = { clean: 'Clean', explicit: 'Explicit', instrumental: 'Instrumental (no lyrics)' }[R.explicit];
+    const sheet = [
+      'RELEASE SHEET', '=============', '',
+      `Title:            ${fullTitle}`, `Primary artist:   ${artist}`, R.feat ? `Featured:         ${R.feat}` : null,
+      `Genre:            ${R.genre || '(choose one when you upload)'}`, `Lyrics:           ${lyr}`,
+      R.credits ? `Credits:          ${R.credits}` : null,
+      `Length:           ${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`,
+      P.beat ? `Tempo:            ${P.bpm} BPM` : null, `Key:              ${D.NOTE_NAMES[P.tune.root]} ${D.SCALE_LABELS[P.tune.scale].toLowerCase()}`,
+      P.master.enabled && s && s.lufs != null ? `Loudness:         ${s.lufs.toFixed(1)} LUFS integrated, peak ${s.peakDb.toFixed(1)} dB` : 'Loudness:         Master was off for this export',
+      `Made:             ${new Date().toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })} in STUDIO365`,
+      '', 'FILES IN THIS PACK', '------------------',
+      ...files.map((f) => `  ${f.name}`), '  release-sheet.txt',
+      '', 'WHICH FILE GOES WHERE', '---------------------',
+      '  Distributor upload (Spotify, Apple Music and the rest): the 16-bit 44.1 kHz WAV is the standard format distributors take.',
+      '  If your distributor takes 24-bit, send the 24-bit WAV instead.',
+      '  The MP3 is for sending to people, DJs, blogs and playlists. It already carries the title, artist and cover.',
+      P.cover ? '  cover-3000.jpg is the artwork file to upload.' : '  No cover in this pack. You need a square image, 3000 x 3000 px, before you upload.',
+      '', 'BEFORE YOU UPLOAD', '-----------------',
+      '  [ ] You own or have licensed the beat. Keep the receipt or the lease agreement.',
+      '  [ ] Every writer and producer is credited the way they want to be.',
+      '  [ ] No uncleared samples.',
+      '  [ ] Cover art has no logos, web addresses or other people\'s brands on it.',
+      '  [ ] Pick a release date at least a week out so stores have time to list it.',
+      '', 'Your music is yours. STUDIO365 claims no rights to anything you record.', '',
+    ].filter((l) => l !== null).join('\r\n');
+    files.push({ name: 'release-sheet.txt', bytes: new TextEncoder().encode(sheet) });
+    step(96, 'Packing the ZIP…');
+    download(Pack.zip(files.map((f) => ({ ...f, name: `${base}/${f.name}` }))), `${base}-release-pack.zip`);
+    step(100, `Done. ${files.length} files are in your downloads as ${base}-release-pack.zip.`);
+    msg.classList.add('ok');
+  } catch (err) {
+    console.error(err);
+    msg.textContent = `The pack could not be built: ${err.message}`; msg.classList.add('err');
+  } finally { btn.disabled = false; }
+}
+
+// ------------------------------------------------------------------ session backup
+function backupSession() {
+  if (!requirePro('Session backup')) return;
+  if (!P.beat && !P.takes.length) { toast('Nothing to back up yet. Load a beat or record a take first.'); return; }
+  download(Pack.packSession(P), `${slug(P.name)}.studio365`);
+  toast('Session file saved to your downloads. Open it on any device with "Open a session file".');
+}
+async function restoreSession(file) {
+  try {
+    const p = await Pack.unpackSession(file);
+    stopPlayback(false); await save();
+    p.id = uid(); p.updated = Date.now();
+    loadIntoUi(p);
+    markDirty();
+    if ($('libraryDialog').open) $('libraryDialog').close();
+    toast(`"${p.name}" is open. It now saves on this device too.`);
+  } catch (err) { toast(err.message, true); }
+}
+
 // ------------------------------------------------------------------ export
 function slug(s) { return (s || 'studio365').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'studio365'; }
-function download(bytes, name, type) {
-  const url = URL.createObjectURL(new Blob([bytes], { type }));
+function download(data, name, type) {
+  const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type }));
   const a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+// Full-quality render of what you hear. stem = the processed vocal (and stack) alone.
+async function renderFinal(stem = false) {
+  const t = activeTake();
+  const mix = { ...P.mix, vocalOffsetMs: P.mix.vocalOffsetMs + (t ? (t.start || 0) * 1000 : 0) };
+  const layers = await buildLayers();
+  let channels;
+  if (stem) {
+    if (!t) throw new Error('Record or import a take first. The stem is your vocal alone.');
+    channels = await renderMix({ sr: P.sr, beat: null, vocal: gated(vocalSignal()), mix, bpm: P.bpm, vocalOnly: true, layers });
+    const pk = D.peak(channels);
+    if (pk > 0) { const g = D.dbToGain(-1) / pk; channels.forEach((c) => { for (let i = 0; i < c.length; i++) c[i] *= g; }); }
+  } else {
+    channels = await renderMix({ sr: P.sr, beat: P.beat ? P.beat.channels : null, vocal: gated(vocalSignal()), mix, bpm: P.bpm, layers });
+    if (P.master.enabled) {
+      const r = await work('master', { channels, sr: P.sr, target: P.master.target, ceiling: P.master.ceiling }, channels.map((c) => c.buffer));
+      channels = r.channels;
+    } else {
+      D.limit(channels, P.sr, -0.3);
+    }
+  }
+  trimTail(channels, P.sr);
+  return channels;
 }
 async function exportAs(format) {
   const prog = $('exportProgress'), bar = $('exportBar'), msg = $('exportMsg');
@@ -826,26 +1226,7 @@ async function exportAs(format) {
   opts.forEach((b) => { b.disabled = true; });
   prog.hidden = false; bar.style.width = '5%'; msg.textContent = 'Rendering full quality…';
   try {
-    const t = activeTake();
-    let channels;
-    if (format === 'stem') {
-      if (!t) throw new Error('Record or import a take first. The stem is your vocal alone.');
-      const mix = { ...P.mix, vocalOffsetMs: P.mix.vocalOffsetMs + (t.start || 0) * 1000 };
-      channels = await renderMix({ sr: P.sr, beat: null, vocal: vocalSignal(), mix, bpm: P.bpm, vocalOnly: true });
-      const pk = D.peak(channels);
-      if (pk > 0) { const g = D.dbToGain(-1) / pk; channels.forEach((c) => { for (let i = 0; i < c.length; i++) c[i] *= g; }); }
-    } else {
-      const mix = { ...P.mix, vocalOffsetMs: P.mix.vocalOffsetMs + (t ? (t.start || 0) * 1000 : 0) };
-      channels = await renderMix({ sr: P.sr, beat: P.beat ? P.beat.channels : null, vocal: vocalSignal(), mix, bpm: P.bpm });
-      bar.style.width = '35%'; msg.textContent = 'Mastering…';
-      if (P.master.enabled) {
-        const r = await work('master', { channels, sr: P.sr, target: P.master.target, ceiling: P.master.ceiling }, channels.map((c) => c.buffer));
-        channels = r.channels;
-      } else {
-        D.limit(channels, P.sr, -0.3);
-      }
-    }
-    trimTail(channels, P.sr);
+    const channels = await renderFinal(format === 'stem');
     bar.style.width = '55%';
     const base = slug(P.name);
     if (format === 'wav24' || format === 'stem') {
@@ -904,6 +1285,8 @@ async function encodeMp3(channels, sr, kbps, onProgress) {
 // ------------------------------------------------------------------ boot
 async function boot() {
   bindControls();
+  const linkToast = (r) => toast(r.ok ? `Pro is on until ${new Date(r.expires).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}. Welcome in.` : r.reason, !r.ok);
+  initPro({ onChange: onProChange, onLink: linkToast }).then(({ fromLink }) => { if (fromLink) linkToast(fromLink); });
   syncControls();
   renderTakes();
   updateTransport();

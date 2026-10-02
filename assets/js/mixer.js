@@ -39,16 +39,18 @@ function saturationCurve(drive) {
 
 export const DEFAULT_MIX = {
   vocalDb: 0, pan: 0, hpf: 90, body: 0, presence: 2, air: 2, sibilance: 3, comp: 45,
-  warmth: 15, reverb: 18, delay: 8, beatDb: -3, vocalOffsetMs: 0,
+  warmth: 15, reverb: 18, delay: 8, beatDb: -3, vocalOffsetMs: 0, gate: 0,
 };
 
-// channels: beat stereo Float32Array[] | null, vocal: Float32Array | null
-export async function renderMix({ sr, beat, vocal, mix, bpm = 90, vocalOnly = false }) {
+// beat: stereo Float32Array[] | null, vocal: Float32Array | null (the lead)
+// layers: extra voices stacked behind the lead: [{ audio: Float32Array, offsetMs, db, pan (-100..100) }]
+export async function renderMix({ sr, beat, vocal, mix, bpm = 90, vocalOnly = false, layers = [] }) {
   const m = { ...DEFAULT_MIX, ...mix };
   const offset = (m.vocalOffsetMs || 0) / 1000;
   const beatLen = beat && !vocalOnly ? beat[0].length : 0;
-  const vocLen = vocal ? vocal.length + Math.max(0, Math.round(offset * sr)) : 0;
-  const tail = vocal ? Math.round(sr * 2.5) : 0;
+  let vocLen = vocal ? vocal.length + Math.max(0, Math.round(offset * sr)) : 0;
+  for (const l of layers) vocLen = Math.max(vocLen, l.audio.length + Math.max(0, Math.round((l.offsetMs || 0) / 1000 * sr)));
+  const tail = vocal || layers.length ? Math.round(sr * 2.5) : 0;
   const length = Math.max(beatLen, vocLen + tail, sr);
   const ctx = new OfflineAudioContext(2, length, sr);
   const bus = ctx.createGain();
@@ -65,6 +67,37 @@ export async function renderMix({ sr, beat, vocal, mix, bpm = 90, vocalOnly = fa
     const g = ctx.createGain(); g.gain.value = dbToGain(m.beatDb);
     src.connect(g).connect(bus);
     src.start(0);
+  }
+
+  // one shared reverb so the lead and every stacked voice sit in the same room
+  let revIn = null;
+  const reverbIn = () => {
+    if (!revIn) {
+      revIn = ctx.createGain();
+      const rhp = ctx.createBiquadFilter(); rhp.type = 'highpass'; rhp.frequency.value = 220;
+      const conv = ctx.createConvolver(); conv.buffer = reverbIR(ctx);
+      revIn.connect(rhp).connect(conv).connect(bus);
+    }
+    return revIn;
+  };
+  const startAt = (src, len, off) => { if (off >= 0) src.start(off); else src.start(0, Math.min(-off, len / sr)); };
+
+  // stacked voices: tucked behind the lead with their own light chain
+  for (const l of layers) {
+    const lb = ctx.createBuffer(1, l.audio.length, sr);
+    lb.copyToChannel(l.audio, 0);
+    const src = ctx.createBufferSource(); src.buffer = lb;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = Math.max(140, m.hpf); hp.Q.value = 0.707;
+    const dip = ctx.createBiquadFilter(); dip.type = 'peaking'; dip.frequency.value = 3000; dip.Q.value = 0.8; dip.gain.value = -2.5;
+    const air = ctx.createBiquadFilter(); air.type = 'highshelf'; air.frequency.value = 9000; air.gain.value = Math.max(0, m.air);
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -26; comp.ratio.value = 5; comp.attack.value = 0.005; comp.release.value = 0.14; comp.knee.value = 8;
+    const level = ctx.createGain(); level.gain.value = dbToGain((l.db ?? -8) + m.vocalDb + 4);
+    const pan = ctx.createStereoPanner(); pan.pan.value = Math.max(-1, Math.min(1, (l.pan || 0) / 100));
+    src.connect(hp).connect(dip).connect(air).connect(comp).connect(level).connect(pan).connect(bus);
+    const send = ctx.createGain(); send.gain.value = Math.pow(Math.max(m.reverb, 14) / 100, 1.5) * 1.1;
+    pan.connect(send).connect(reverbIn());
+    startAt(src, l.audio.length, (l.offsetMs || 0) / 1000);
   }
 
   if (vocal) {
@@ -101,9 +134,7 @@ export async function renderMix({ sr, beat, vocal, mix, bpm = 90, vocalOnly = fa
     // reverb send
     if (m.reverb > 0) {
       const send = ctx.createGain(); send.gain.value = Math.pow(m.reverb / 100, 1.5) * 0.9;
-      const rhp = ctx.createBiquadFilter(); rhp.type = 'highpass'; rhp.frequency.value = 220;
-      const conv = ctx.createConvolver(); conv.buffer = reverbIR(ctx);
-      level.connect(send).connect(rhp).connect(conv).connect(bus);
+      level.connect(send).connect(reverbIn());
     }
     // eighth-note delay send, darkening repeats
     if (m.delay > 0) {
@@ -116,32 +147,9 @@ export async function renderMix({ sr, beat, vocal, mix, bpm = 90, vocalOnly = fa
       lp.connect(bus);
     }
 
-    if (offset >= 0) src.start(offset);
-    else src.start(0, Math.min(-offset, vocal.length / sr));
+    startAt(src, vocal.length, offset);
   }
 
   const rendered = await ctx.startRendering();
   return [rendered.getChannelData(0).slice(), rendered.getChannelData(1).slice()];
-}
-
-// Suggest a vocal level that sits the vocal ~1.5 dB above the beat's midrange energy.
-export function balanceVocal(beat, vocal, sr) {
-  if (!beat || !vocal) return 0;
-  const band = (x) => {
-    // crude 300 Hz – 4 kHz band energy via difference of one-pole filters
-    let lp1 = 0, lp2 = 0, acc = 0, n = 0;
-    const a1 = 1 - Math.exp(-2 * Math.PI * 4000 / sr), a2 = 1 - Math.exp(-2 * Math.PI * 300 / sr);
-    for (let i = 0; i < x.length; i += 1) {
-      lp1 += (x[i] - lp1) * a1; lp2 += (x[i] - lp2) * a2;
-      const v = lp1 - lp2;
-      if (Math.abs(x[i]) > 0.01) { acc += v * v; n++; }
-    }
-    return Math.sqrt(acc / Math.max(1, n));
-  };
-  const beatMono = new Float32Array(beat[0].length);
-  for (const ch of beat) for (let i = 0; i < ch.length; i++) beatMono[i] += ch[i] / beat.length;
-  const vb = band(vocal), bb = band(beatMono);
-  if (!vb || !bb) return 0;
-  const db = 20 * Math.log10(bb / vb) + 1.5;
-  return Math.max(-18, Math.min(18, Math.round(db * 2) / 2));
 }
