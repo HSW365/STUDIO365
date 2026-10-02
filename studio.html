@@ -13,6 +13,26 @@
   <link rel="stylesheet" href="assets/css/base.css">
   <link rel="stylesheet" href="assets/css/studio.css">
   <link rel="stylesheet" href="assets/css/pro.css">
+  <script>
+    // If anything breaks, say so on screen instead of leaving dead buttons.
+    (function () {
+      function show(msg) {
+        var b = document.getElementById('errBar');
+        if (!b) {
+          b = document.createElement('div'); b.id = 'errBar';
+          b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:10px 16px;font:14px/1.4 system-ui,sans-serif';
+          (document.body || document.documentElement).appendChild(b);
+        }
+        b.textContent = 'Something broke on this page. Press Ctrl+Shift+R to reload. If it stays, send this line to support: ' + msg;
+      }
+      window.addEventListener('error', function (e) {
+        var t = e.target;
+        if (t && t !== window && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) { if (!/fonts\.|jsdelivr/.test(t.src || t.href || '')) show('could not load ' + (t.src || t.href)); return; }
+        show((e.message || 'error') + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) { var r = e.reason; show(String(r && r.message || r)); });
+    })();
+  </script>
 </head>
 <body class="studio">
   <header class="topbar">
