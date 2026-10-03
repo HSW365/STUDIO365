@@ -84,3 +84,20 @@
   .pro-row { grid-template-columns: 1fr; }
   .pro-active .pro-row { grid-template-columns: 1fr; }
 }
+
+/* ---- three plans ---- */
+.pro-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 14px; }
+.pro-plan {
+  display: flex; flex-direction: column; gap: 6px; padding: 16px 14px 14px; border-radius: var(--r-m); border: 1px solid var(--line-2);
+  background: var(--ink); text-decoration: none; color: var(--text); transition: border-color .15s, background-color .15s;
+}
+.pro-plan b { font: 700 18px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; color: #d6b4fe; }
+.pro-plan strong { font: 800 40px/1 var(--display); display: flex; align-items: baseline; gap: 6px; }
+.pro-plan strong small { font: 400 12px/1 var(--body); color: var(--muted); }
+.pro-plan span { font-size: 13px; line-height: 1.4; color: var(--text-2); flex: 1; }
+.pro-plan i { font-style: normal; font-weight: 600; font-size: 14px; text-align: center; padding: 9px 0; border-radius: 999px; background: var(--violet); color: #fff; margin-top: 6px; }
+.pro-plan:hover { border-color: var(--violet); background: var(--violet-dim); }
+.pro-plan.dim { opacity: .4; }
+.pro-plan.current { border-color: var(--cyan); }
+.pro-plan.current i { background: var(--cyan); color: #04141a; }
+@media (max-width: 560px) { .pro-plans { grid-template-columns: 1fr; } .pro-plan strong { font-size: 32px; } }

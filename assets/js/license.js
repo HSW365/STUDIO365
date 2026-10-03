@@ -66,20 +66,20 @@ export async function status() {
   const saved = read();
   if (!saved) return { pro: false };
   const r = await verifyKey(saved);
-  if (r.ok) return { pro: true, email: r.email, expires: r.expires, daysLeft: Math.ceil((r.expires - Date.now()) / DAY) };
+  if (r.ok) return { pro: true, plan: ['starter', 'plus', 'pro'].includes(r.plan) ? r.plan : 'pro', email: r.email, expires: r.expires, daysLeft: Math.ceil((r.expires - Date.now()) / DAY) };
   return { pro: false, expired: !!r.expired, email: r.email, expires: r.expires };
 }
 
 // ---- owner side (used only by the key maker page) ------------------------------------
 // months counts from `from` (ms). Day granularity keeps keys short.
-export async function signKey(privateJwk, { email, months = 1, from = Date.now() }) {
+export async function signKey(privateJwk, { email, months = 1, from = Date.now(), plan = 'pro' }) {
   const priv = await crypto.subtle.importKey('jwk', { ...privateJwk, ext: true }, ALG, false, ['sign']);
   const start = new Date(from);
   const end = new Date(start); end.setMonth(end.getMonth() + months);
-  const payload = { e: String(email).trim().toLowerCase(), p: 'pro', i: Math.floor(start.getTime() / DAY), x: Math.ceil(end.getTime() / DAY) + 1 };
+  const payload = { e: String(email).trim().toLowerCase(), p: ['starter', 'plus', 'pro'].includes(plan) ? plan : 'pro', i: Math.floor(start.getTime() / DAY), x: Math.ceil(end.getTime() / DAY) + 1 };
   const body = b64u(enc.encode(JSON.stringify(payload)));
   const sig = await crypto.subtle.sign(SIG, priv, enc.encode(body));
-  return { key: `S365-${body}.${b64u(sig)}`, expires: payload.x * DAY, email: payload.e };
+  return { key: `S365-${body}.${b64u(sig)}`, expires: payload.x * DAY, email: payload.e, plan: payload.p };
 }
 
 export async function makeKeyPair() {

@@ -38,21 +38,27 @@ A full vocal studio that runs in the browser: record over a beat, pitch-correct 
 - **Release pack**: one ZIP with 24-bit master, 16-bit 44.1 kHz master, tagged MP3 320 with cover, 3000 px cover and a release sheet.
 - **Session backup**: save a whole session to a `.studio365` file and open it on another computer.
 
-## How Pro and Cash App work
+## Plans and checkout
 
-There is no server. A Pro key is a short signed note (email + end date). The site holds only the public half of the signing key, so it can check a key but nobody can make one from the page source.
+The first 3 projects on a device are free (`FREE_PROJECTS` in `config.js`). After that a plan is needed to put audio into a new project. Three plans, each including the one before it, sold as one-month purchases on the Shopify store (hsw365.co):
 
-1. A customer presses **Go Pro**, pays the cashtag in `config.js` with Cash App, and puts their email in the note.
-2. You open **`admin.html`** (the key maker), load `studio365-owner-key.json` once, type their email and press **Make key**.
-3. Send them the message it writes. Their link turns Pro on in one tap. Keys end on their own; a renewal is a new payment and a new key.
+| Plan | Price | Adds |
+| --- | --- | --- |
+| Starter | $15 | Unlimited projects, the full studio |
+| Plus | $20 | Tune Pro, vocal stacks and harmonies, six more presets |
+| Pro | $25 | A&R365 record check, release pack, session backup |
+
+There is no server. A key is a short signed note (email, plan, end date). The site holds only the public half of the signing key, so it can check a key but nobody can make one from the page source.
+
+1. A customer buys a plan on Shopify. The order shows their email and which plan.
+2. You open **`admin.html`** (the key maker), load `studio365-owner-key.json` once, type their email, pick the plan and press **Make key**.
+3. Send them the message it writes. Their link turns the plan on in one tap. Keys end on their own; a renewal is a new purchase and a new key.
 
 Things to know:
 
-- `studio365-owner-key.json` is **not** in this repo and must never be. Whoever has it can make Pro keys. Keep a backup.
-- The key maker page is public but does nothing without the owner file. Its member list lives in your browser only; download the CSV now and then.
-- Prices and the cashtag live in `config.js` (`PRO_PRICE`, `PRO_FIRST_MONTH`, `CASHTAG`).
-- Cash App cannot bill automatically or prove a payment to the site, so approval is manual. A key is not tied to one device; a customer could share theirs. The studio runs in the browser, so like any web app a determined person could edit the code to skip the check.
-- Selling through Cash App needs a Cash App business account under its terms.
+- `studio365-owner-key.json` is **not** in this repo and must never be. Whoever has it can make keys. Keep a backup.
+- Prices and the Shopify variant ids live in `config.js` (`PLANS`). Change a price in Shopify and there.
+- Keys are made by hand after each order. A key is not tied to one device. The free-project count lives in the browser, so clearing site data resets it. The studio runs in the browser, so like any web app a determined person could edit the code to skip the check.
 
 ## Files
 

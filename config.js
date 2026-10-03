@@ -4,7 +4,18 @@ window.STUDIO365_CONFIG = {
   PRODUCT_NAME: "STUDIO365",
   CONTACT_EMAIL: "hsw365media@gmail.com",
 
-  // ---- Pro pricing and Cash App checkout -------------------------------------------
+  // ---- Plans, sold on the Shopify store --------------------------------------------
+  // Change a price in Shopify AND here. Each purchase is one month; the key maker (admin.html) issues the key.
+  // The first FREE_PROJECTS sessions on a device need no plan.
+  FREE_PROJECTS: 3,
+  SHOP_PRODUCT_URL: "https://hsw365.co/products/studio365-record-tune-mix-and-master-in-your-browser",
+  PLANS: [
+    { id: "starter", name: "Starter", price: 15, variant: "47998395744417", blurb: "Unlimited projects. Record, tune, mix, master, export." },
+    { id: "plus", name: "Plus", price: 20, variant: "47998395777185", blurb: "Adds Tune Pro, vocal stacks and harmonies, six more presets." },
+    { id: "pro", name: "Pro", price: 25, variant: "47998395809953", blurb: "Adds the A&R365 record check, release packs and session backups." }
+  ],
+
+  // ---- Older Cash App checkout (no longer shown on the site) -------------------------------------------
   // Change a price here and it updates the landing page, the studio and the checkout.
   CASHTAG: "$hsw365",
   PRO_PRICE: 23,          // dollars per month

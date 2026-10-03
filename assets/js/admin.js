@@ -68,23 +68,24 @@ $('makeForm').addEventListener('submit', async (e) => {
     if (current && current > from) from = current;
   }
   try {
-    const k = await signKey(owner.privateKey, { email, months, from });
+    const plan = $('plan').value;
+    const k = await signKey(owner.privateKey, { email, months, from, plan });
     const check = await verifyKey(k.key);
     if (!check.ok) throw new Error(check.reason);
     const link = `${studioUrl}#key=${k.key}`;
     const until = fmtDate(k.expires);
     const text = [
-      `Your ${cfg.PRODUCT_NAME || 'STUDIO365'} Pro is ready.`, '',
-      'Tap this link on the device you record on and Pro turns on by itself:', link, '',
-      `It is good until ${until}. Pro never bills you on its own. When you want another month, pay again in Cash App (${cfg.CASHTAG || '$hsw365'}) and you get a new link.`, '',
-      'If the link gives you trouble, open the studio, press Go Pro and paste this key:', k.key, '',
+      `Your ${cfg.PRODUCT_NAME || 'STUDIO365'} ${{ starter: 'Starter', plus: 'Plus', pro: 'Pro' }[plan]} plan is ready.`, '',
+      'Tap this link on the device you record on and your plan turns on by itself:', link, '',
+      `It is good until ${until}. Nothing bills on its own. When you want another month, buy it again at hsw365.co and you get a new link.`, '',
+      'If the link gives you trouble, open the studio, press Plans and paste this key:', k.key, '',
       'Turn negative into positive.', 'HSW365 Media',
     ].join('\n');
     last = { link, text, email };
     $('message').value = text;
-    $('btnEmail').href = `mailto:${email}?subject=${encodeURIComponent('Your STUDIO365 Pro key')}&body=${encodeURIComponent(text)}`;
+    $('btnEmail').href = `mailto:${email}?subject=${encodeURIComponent('Your STUDIO365 key')}&body=${encodeURIComponent(text)}`;
     $('result').hidden = false;
-    log.unshift({ email, months, made: Date.now(), expires: k.expires, key: k.key });
+    log.unshift({ email, months, plan, made: Date.now(), expires: k.expires, key: k.key });
     localStorage.setItem(LOG, JSON.stringify(log));
     paintLog();
     msg.textContent = `Key made for ${email}. Good until ${until}${from > Date.now() + 60000 ? ' (added on to the time they had left)' : ''}.`; msg.classList.add('ok');

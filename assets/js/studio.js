@@ -5,7 +5,7 @@ import * as Edit from './edit.js';
 import { initConsole, rebuildConsole, syncConsole, selectStrip, kickMeters, initEq, drawEq, selectBand, selectedBand, EQ_BANDS, CHANNELS } from './console.js';
 import { vocalBeatBalance, BALANCE_TARGET } from './check.js';
 import * as Store from './store.js';
-import { initPro, isPro, requirePro, openPro } from './pro.js';
+import { initPro, isPro, isMember, planName, requirePro, openPro, FREE_PROJECTS } from './pro.js';
 import { PRESETS } from './presets.js';
 import * as Pack from './pack.js';
 import { runJob } from './dsp-jobs.js';
@@ -16,6 +16,7 @@ const DEFAULT_MASTER = { enabled: true, target: -14, ceiling: -1 };
 const DEFAULT_STACK = { double: 0, harmony: 'off', harmonyLevel: 50, takes: {} };
 const DEFAULTS = { tune: DEFAULT_TUNE, mix: DEFAULT_MIX, stack: DEFAULT_STACK };
 const LAST_KEY = 'studio365:last-session';
+const FREE_KEY = 'studio365:free-projects';
 
 // ------------------------------------------------------------------ state
 let P = newProject();
@@ -270,6 +271,24 @@ function toast(msg, error = false) {
 function setRenderState(msg, busy = false) {
   const el = $('renderState');
   el.textContent = msg; el.classList.toggle('busy', busy);
+}
+
+// ------------------------------------------------------------------ the free allowance
+// The first few projects on a device need no plan. A project counts once audio goes into it.
+function freeUsed() { try { return JSON.parse(localStorage.getItem(FREE_KEY) || '[]'); } catch { return []; } }
+function canWork() {
+  if (isMember()) return true;
+  const used = freeUsed();
+  if (used.includes(P.id)) return true;
+  if (used.length < FREE_PROJECTS) {
+    used.push(P.id);
+    try { localStorage.setItem(FREE_KEY, JSON.stringify(used)); } catch { /* private mode */ }
+    const left = FREE_PROJECTS - used.length;
+    setTimeout(() => toast(left ? `Free project ${used.length} of ${FREE_PROJECTS}. ${left} left before you need a plan.` : `This is your last free project. After this one, plans start at $15 a month.`), 4200);
+    return true;
+  }
+  openPro(`Your ${FREE_PROJECTS} free projects are used`, 'starter');
+  return false;
 }
 
 // ------------------------------------------------------------------ persistence
@@ -537,6 +556,7 @@ function updateMeter(pk) {
 }
 
 async function startRecording() {
+  if (!canWork()) return;
   let c;
   try {
     c = audio(); await c.resume();
@@ -640,6 +660,7 @@ function afterTakesChanged() {
 
 // ------------------------------------------------------------------ beat + vocal import
 async function loadBeat(file) {
+  if (!canWork()) return;
   try {
     setRenderState(`Loading ${file.name}…`, true);
     const chans = await decodeFile(file);
@@ -670,6 +691,7 @@ async function analyzeBeat(apply) {
 }
 
 async function importVocal(file) {
+  if (!canWork()) return;
   try {
     setRenderState(`Loading ${file.name}…`, true);
     const chans = await decodeFile(file);
@@ -1568,7 +1590,7 @@ function bindControls() {
     P.stack.harmony = e.target.value; markDirty(); scheduleRender(0);
   });
   const free = document.createElement('optgroup'); free.label = 'Included';
-  const paid = document.createElement('optgroup'); paid.label = 'Pro';
+  const paid = document.createElement('optgroup'); paid.label = 'Plus and Pro';
   PRESETS.forEach((p) => (p.pro ? paid : free).append(new Option(p.name, p.id)));
   $('presetSelect').append(free, paid);
   $('presetSelect').addEventListener('change', (e) => applyPreset(e.target.value));
@@ -1580,7 +1602,7 @@ function bindControls() {
   $('coverDrop').addEventListener('click', () => $('fileCover').click());
   $('fileCover').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) setCover(f); });
   $('btnBackup').addEventListener('click', backupSession);
-  $('btnRestore').addEventListener('click', () => { if (requirePro('Session backup')) $('fileSession').click(); });
+  $('btnRestore').addEventListener('click', () => { if (requirePro('Session backup', 'pro')) $('fileSession').click(); });
   $('fileSession').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) restoreSession(f); });
 
   // tabs
@@ -1787,9 +1809,9 @@ function applyPreset(id) {
 function onProChange() {
   document.body.classList.toggle('is-pro', isPro());
   const b = $('btnPro');
-  b.textContent = isPro() ? 'Pro' : 'Go Pro';
-  b.classList.toggle('on', isPro());
-  b.title = isPro() ? 'Your Pro membership' : 'Unlock stacks, pro presets, record check and release packs';
+  b.textContent = isMember() ? planName() : 'Plans';
+  b.classList.toggle('on', isMember());
+  b.title = isMember() ? `Your ${planName()} plan` : `First ${FREE_PROJECTS} projects free. Plans from $15 a month.`;
   updateBeatUi(); renderKeys();
   if (P.beat || P.takes.length) scheduleTune(0);
 }
@@ -1808,7 +1830,7 @@ async function settled(timeout = 120000) {
 
 // ------------------------------------------------------------------ A&R365 record check
 async function runCheck() {
-  if (!requirePro('The A&R365 record check')) return;
+  if (!requirePro('The A&R365 record check', 'pro')) return;
   if (!mixCache) return;
   const dlg = $('checkDialog');
   $('checkScore').textContent = '–'; $('checkVerdict').textContent = 'Listening…'; $('checkList').textContent = '';
@@ -1864,7 +1886,7 @@ async function runCheck() {
 
 // ------------------------------------------------------------------ release pack
 function openRelease() {
-  if (!requirePro('The release pack')) return;
+  if (!requirePro('The release pack', 'pro')) return;
   $('exportDialog').close();
   const r = P.release || {};
   $('relTitle').value = r.title || (P.name === 'Untitled session' ? '' : P.name);
@@ -1968,7 +1990,7 @@ async function buildRelease() {
 
 // ------------------------------------------------------------------ session backup
 function backupSession() {
-  if (!requirePro('Session backup')) return;
+  if (!requirePro('Session backup', 'pro')) return;
   if (!P.beat && !P.takes.length) { toast('Nothing to back up yet. Load a beat or record a take first.'); return; }
   download(Pack.packSession(P), `${slug(P.name)}.studio365`);
   toast('Session file saved to your downloads. Open it on any device with "Open a session file".');
@@ -2078,7 +2100,7 @@ async function encodeMp3(channels, sr, kbps, onProgress) {
 // ------------------------------------------------------------------ boot
 async function boot() {
   bindControls();
-  const linkToast = (r) => toast(r.ok ? `Pro is on until ${new Date(r.expires).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}. Welcome in.` : r.reason, !r.ok);
+  const linkToast = (r) => toast(r.ok ? `Your plan is on until ${new Date(r.expires).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}. Welcome in.` : r.reason, !r.ok);
   initPro({ onChange: onProChange, onLink: linkToast }).then(({ fromLink }) => { if (fromLink) linkToast(fromLink); });
   syncControls();
   renderTakes();

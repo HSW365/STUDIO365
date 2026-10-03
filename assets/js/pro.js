@@ -15,10 +15,23 @@ let listeners = [];
 let dlg = null;
 let amount = FIRST;
 
-export const isPro = () => !!state.pro;
+// Three plans, each one including the one before it. A key says which plan it is for.
+export const PLANS = cfg.PLANS || [
+  { id: 'starter', name: 'Starter', price: 15, blurb: 'Unlimited projects. Record, tune, mix, master, export.' },
+  { id: 'plus', name: 'Plus', price: 20, blurb: 'Adds Tune Pro, vocal stacks and harmonies, six more presets.' },
+  { id: 'pro', name: 'Pro', price: 25, blurb: 'Adds the A&R365 record check, release packs and session backups.' },
+];
+const RANK = { starter: 1, plus: 2, pro: 3 };
+export const FREE_PROJECTS = Number(cfg.FREE_PROJECTS) || 3;
+export const isMember = () => !!state.pro;                       // any paid plan
+export const planId = () => (state.pro ? state.plan || 'pro' : null);
+export const planName = () => { const pl = PLANS.find((x) => x.id === planId()); return pl ? pl.name : null; };
+export const hasPlan = (need = 'plus') => !!state.pro && RANK[state.plan || 'pro'] >= (RANK[need] || 2);
+export const isPro = () => hasPlan('plus');                      // the creative extras: Tune Pro, stacks, presets
 export const proStatus = () => state;
 export const prices = { monthly: PRICE, first: FIRST, cashtag: CASHTAG };
 export const cashLink = (amt) => `https://cash.app/${encodeURIComponent(CASHTAG).replace('%24', '$')}/${amt}`;
+export const buyLink = (pl) => (pl.variant ? `https://hsw365.co/cart/${pl.variant}:1` : cfg.SHOP_PRODUCT_URL || 'https://hsw365.co');
 
 async function refresh() {
   state = await License.status();
@@ -49,9 +62,10 @@ export async function initPro({ onChange, onLink } = {}) {
   return { status: state, fromLink };
 }
 
-export function requirePro(feature) {
-  if (state.pro) return true;
-  openPro(feature);
+// need: the lowest plan that includes the feature.
+export function requirePro(feature, need = 'plus') {
+  if (hasPlan(need)) return true;
+  openPro(feature, need);
   return false;
 }
 
@@ -63,57 +77,27 @@ function build() {
   <dialog class="pro-sheet" aria-labelledby="proTitle">
     <form method="dialog" class="pro-head">
       <div>
-        <p class="pro-eyebrow" id="proEyebrow">STUDIO365 Pro</p>
-        <h2 id="proTitle">Go Pro</h2>
+        <p class="pro-eyebrow" id="proEyebrow">STUDIO365 plans</p>
+        <h2 id="proTitle">Pick a plan</h2>
       </div>
       <button class="pro-x" aria-label="Close" value="close">✕</button>
     </form>
 
     <div class="pro-body" id="proBuy">
       <p class="pro-lede" id="proLede"></p>
-
-      <fieldset class="pro-amounts" id="proAmounts">
-        <legend class="sr-only">What you are paying for</legend>
-        <label><input type="radio" name="proAmt" value="${FIRST}" checked><span><b>$${FIRST}</b><em>First month</em></span></label>
-        <label><input type="radio" name="proAmt" value="${PRICE}"><span><b>$${PRICE}</b><em>Renew a month</em></span></label>
-      </fieldset>
-
-      <ol class="pro-steps">
-        <li>
-          <h3>Where should your key go?</h3>
-          <label class="sr-only" for="proEmail">Email address</label>
-          <input id="proEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@email.com" spellcheck="false">
-        </li>
-        <li>
-          <h3>Pay <span id="proAmtText">$${FIRST}</span> to <span class="pro-tag">${CASHTAG}</span></h3>
-          <div class="pro-pay">
-            <div class="pro-qr" id="proQr" aria-hidden="true"></div>
-            <div class="pro-pay-copy">
-              <a class="btn pro-cash" id="proCash" target="_blank" rel="noopener">
-                <i class="pro-cash-mark" aria-hidden="true">$</i>
-                <span id="proCashText">Pay $${FIRST} in Cash App</span>
-              </a>
-              <p>On a computer? Point your phone camera at the code. <b>Put your email in the Cash App note</b> so your payment gets matched to you.</p>
-            </div>
-          </div>
-        </li>
-        <li>
-          <h3>Tell us you paid</h3>
-          <div class="pro-row">
-            <label class="sr-only" for="proCashtag">Your $cashtag</label>
-            <input id="proCashtag" type="text" placeholder="Your $cashtag" autocomplete="off" spellcheck="false" maxlength="24">
-            <button type="button" class="btn primary" id="proPaid">I paid. Send my key</button>
-          </div>
-          <p class="pro-msg" id="proMsg" role="status" aria-live="polite">Your key is emailed once the payment shows up. No auto-billing, ever. Renew when you want.</p>
-        </li>
-      </ol>
+      <div class="pro-plans" id="proPlans">
+        ${PLANS.map((pl) => `<a class="pro-plan" data-plan="${pl.id}" href="${buyLink(pl)}" target="_blank" rel="noopener">
+          <b>${pl.name}</b><strong>$${pl.price}<small>a month</small></strong><span>${pl.blurb}</span><i>Get ${pl.name}</i>
+        </a>`).join('')}
+      </div>
+      <p class="pro-msg" id="proMsg" role="status" aria-live="polite"></p>
     </div>
 
     <div class="pro-body pro-active" id="proActive" hidden>
-      <p class="pro-badge-lg">Pro is on</p>
+      <p class="pro-badge-lg" id="proBadge">Your plan is on</p>
       <p class="pro-lede" id="proActiveText"></p>
       <div class="pro-row">
-        <button type="button" class="btn primary" id="proRenew">Add another month</button>
+        <button type="button" class="btn primary" id="proRenew">Add a month or change plan</button>
         <button type="button" class="btn ghost" id="proRemove">Remove key from this device</button>
       </div>
     </div>
@@ -122,7 +106,7 @@ function build() {
       <label for="proKeyInput" id="proKeyLabel">Already have a key?</label>
       <div class="pro-row">
         <input id="proKeyInput" type="text" placeholder="S365-…" autocomplete="off" spellcheck="false">
-        <button type="button" class="btn ghost" id="proActivate">Turn on Pro</button>
+        <button type="button" class="btn ghost" id="proActivate">Turn it on</button>
       </div>
       <p class="pro-msg" id="proKeyMsg" role="status" aria-live="polite"></p>
     </div>
@@ -130,80 +114,35 @@ function build() {
   document.body.append(dlg);
   const $ = (id) => dlg.querySelector('#' + id);
 
-  dlg.querySelectorAll('input[name="proAmt"]').forEach((r) => r.addEventListener('change', () => setAmount(Number(r.value))));
-  try { $('proEmail').value = localStorage.getItem(EMAIL_KEY) || ''; } catch { /* private mode */ }
-
-  $('proPaid').addEventListener('click', async () => {
-    const email = $('proEmail').value.trim().toLowerCase(), tag = $('proCashtag').value.trim();
-    const msg = $('proMsg'); msg.className = 'pro-msg';
-    if (!EMAIL_RE.test(email)) { msg.textContent = 'Enter the email address your key should go to, like you@email.com.'; msg.classList.add('err'); $('proEmail').focus(); return; }
-    try { localStorage.setItem(EMAIL_KEY, email); } catch { /* private mode */ }
-    const btn = $('proPaid'); btn.disabled = true;
-    try {
-      let logged = false;
-      if (hasSupabase) {
-        const r = await fetch(`${cfg.SUPABASE_URL}/rest/v1/studio365_pro_requests`, {
-          method: 'POST',
-          headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: `Bearer ${cfg.SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ email, cashtag: tag.slice(0, 24), amount }),
-        });
-        logged = r.ok;
-      }
-      if (!logged) {
-        const body = `I paid for STUDIO365 Pro.\n\nKey goes to: ${email}\nMy $cashtag: ${tag || '(not given)'}\nAmount: $${amount} to ${CASHTAG}\n`;
-        window.location.href = `mailto:${CONTACT}?subject=${encodeURIComponent('STUDIO365 Pro payment')}&body=${encodeURIComponent(body)}`;
-      }
-      msg.innerHTML = '';
-      msg.append(logged ? 'Got it. ' : 'Your email app opened with the details. Hit send. ',
-        `Your key goes to ${email} once the $${amount} payment to ${CASHTAG} shows up. Paste it below to switch Pro on. Nothing opened? Email `,
-        Object.assign(document.createElement('a'), { href: `mailto:${CONTACT}`, textContent: CONTACT }), '.');
-      msg.classList.add('ok');
-      $('proKeyInput').focus();
-    } catch {
-      msg.textContent = `That didn't go through. Email ${CONTACT} with your $cashtag and you'll get your key.`;
-      msg.classList.add('err');
-    } finally { btn.disabled = false; }
-  });
-
   let checking = false;
   const tryKey = async () => {
     if (checking) return;
     const msg = $('proKeyMsg');
     const typed = $('proKeyInput').value.trim();
     // Pro already on and nothing new typed: say so instead of complaining about an empty box.
-    if (!typed && state.pro) { msg.className = 'pro-msg ok'; msg.textContent = `Pro is on until ${License.fmtDate(state.expires)}. You're all set.`; return; }
+    if (!typed && state.pro) { msg.className = 'pro-msg ok'; msg.textContent = `${planName()} is on until ${License.fmtDate(state.expires)}. You're all set.`; return; }
     checking = true; msg.className = 'pro-msg';
     try {
       const r = await License.activate(typed);
       if (!r.ok) {
-        msg.textContent = /@/.test(typed) && !/S365-/.test(typed) ? 'That is an email address. Paste the Pro key or the unlock link you were sent. It starts with S365-.' : r.reason;
+        msg.textContent = /@/.test(typed) && !/S365-/.test(typed) ? 'That is an email address. Paste the key or the unlock link you were sent. It starts with S365-.' : r.reason;
         msg.classList.add('err'); return;
       }
       $('proKeyInput').value = '';
       await refresh();
-      msg.textContent = `Pro is on until ${License.fmtDate(r.expires)}. You're all set.`; msg.classList.add('ok');
+      msg.textContent = `${planName() || 'Your plan'} is on until ${License.fmtDate(r.expires)}. You're all set.`; msg.classList.add('ok');
     } finally { checking = false; }
   };
   $('proActivate').addEventListener('click', tryKey);
   $('proKeyInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); tryKey(); } });
   $('proKeyInput').addEventListener('paste', () => setTimeout(tryKey, 0));
 
-  $('proRenew').addEventListener('click', () => { setAmount(PRICE); showBuy(true); });
+  $('proRenew').addEventListener('click', () => { showBuy(true); });
   $('proRemove').addEventListener('click', async () => {
-    if (!confirm('Remove your Pro key from this browser? You can paste it again any time before it runs out.')) return;
+    if (!confirm('Remove your key from this browser? You can paste it again any time before it runs out.')) return;
     License.clearKey(); await refresh();
   });
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
-}
-
-function setAmount(v) {
-  amount = v;
-  const $ = (id) => dlg.querySelector('#' + id);
-  dlg.querySelectorAll('input[name="proAmt"]').forEach((r) => { r.checked = Number(r.value) === v; });
-  $('proAmtText').textContent = `$${v}`;
-  $('proCashText').textContent = `Pay $${v} in Cash App`;
-  $('proCash').href = cashLink(v);
-  drawQr(cashLink(v));
 }
 
 let forceBuy = false;
@@ -215,45 +154,29 @@ function paint() {
   const active = state.pro && !forceBuy;
   $('proBuy').hidden = active;
   $('proActive').hidden = !active;
-  $('proAmounts').hidden = FIRST === PRICE;
-  $('proKeyLabel').textContent = state.pro ? 'Got a new key? Paste it to extend.' : 'Already have a key?';
+  $('proKeyLabel').textContent = state.pro ? 'Got a new key? Paste it to extend or change plan.' : 'Already have a key?';
+  dlg.querySelectorAll('.pro-plan').forEach((a) => a.classList.toggle('current', state.pro && a.dataset.plan === planId()));
   if (state.pro) {
-    $('proTitle').textContent = forceBuy ? 'Add a month' : 'You are Pro';
-    $('proActiveText').textContent = `${state.email ? state.email + ' · ' : ''}Good until ${License.fmtDate(state.expires)} (${state.daysLeft} day${state.daysLeft === 1 ? '' : 's'} left). Pro never bills you on its own. Add a month whenever you like and the new key picks up from there.`;
+    $('proTitle').textContent = forceBuy ? 'Add a month or change plan' : `You are on ${planName()}`;
+    $('proBadge').textContent = `${planName()} is on`;
+    $('proActiveText').textContent = `${state.email ? state.email + ' · ' : ''}Good until ${License.fmtDate(state.expires)} (${state.daysLeft} day${state.daysLeft === 1 ? '' : 's'} left). Nothing bills on its own. Add a month whenever you like and the new key picks up from there.`;
   }
 }
 
-function drawQr(text) {
-  const box = dlg.querySelector('#proQr');
-  const render = () => {
-    try {
-      const qr = window.qrcode(0, 'M'); qr.addData(text); qr.make();
-      box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
-      box.hidden = false;
-    } catch { box.hidden = true; }
-  };
-  if (window.qrcode) return render();
-  box.hidden = true;
-  if (drawQr.loading) { drawQr.loading.then(render, () => {}); return; }
-  drawQr.loading = new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
-    s.onload = res; s.onerror = rej; document.head.append(s);
-  });
-  drawQr.loading.then(render, () => {});
-}
-
-// feature: optional name of the Pro feature the person just reached for.
-export function openPro(feature) {
+// feature: what the person just reached for. need: the lowest plan that includes it.
+export function openPro(feature, need = null) {
   if (!dlg) build();
+  if (feature && !need) need = 'plus';
   const $ = (id) => dlg.querySelector('#' + id);
-  forceBuy = false;
-  $('proTitle').textContent = feature ? `${feature} is a Pro feature` : 'Go Pro';
-  $('proLede').textContent = `Tune Pro with the note-by-note pitch editor, vocal stacks and harmonies, pro presets, the A&R365 record check, release packs and session backups. $${FIRST === PRICE ? PRICE : FIRST + ' your first month, then $' + PRICE} a month, paid with Cash App.`;
+  forceBuy = !!(state.pro && need && !hasPlan(need));
+  const pl = PLANS.find((x) => x.id === need);
+  $('proTitle').textContent = feature ? (pl ? `${feature}: ${pl.name} and up` : feature) : 'Pick a plan';
+  $('proLede').textContent = `Your first ${FREE_PROJECTS} projects are free. After that, pick a plan. Each purchase is one month and nothing bills on its own.`;
+  dlg.querySelectorAll('.pro-plan').forEach((a) => a.classList.toggle('dim', !!need && RANK[a.dataset.plan] < RANK[need]));
   $('proMsg').className = 'pro-msg';
-  $('proMsg').textContent = 'Your key is emailed once the payment shows up. No auto-billing, ever. Renew when you want.';
+  $('proMsg').textContent = `Checkout is on hsw365.co. Your key is emailed to the address on your order, usually the same day. Tap the link in that email and your plan turns on here. Questions: ${CONTACT}`;
   $('proKeyMsg').textContent = '';
-  setAmount(state.expired || state.pro ? PRICE : FIRST);
   paint();
+  if (feature && (!state.pro || forceBuy)) $('proTitle').textContent = pl ? `${feature}: ${pl.name} and up` : feature;
   if (!dlg.open) dlg.showModal();
 }

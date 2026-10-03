@@ -1,5 +1,5 @@
 // STUDIO365 landing: live A/B pitch-correction demo, Pro checkout, nav state.
-import { initPro, isPro, openPro, prices } from './pro.js';
+import { initPro, openPro, planName } from './pro.js';
 const $ = (id) => document.getElementById(id);
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const A_MINOR = [0, 2, 3, 5, 7, 8, 10].map((p) => (p + 9) % 12);
@@ -241,15 +241,12 @@ draw();
 document.addEventListener('visibilitychange', () => { if (document.hidden && playing) stop(); });
 
 // ---------------------------------------------------------------- Pro
-const fill = (k, v) => document.querySelectorAll(`[data-price="${k}"]`).forEach((el) => { el.textContent = v; });
-fill('monthly', prices.monthly); fill('first', prices.first); fill('tag', prices.cashtag);
 const paintPro = (st) => {
-  $('btnGoPro').textContent = st.pro ? 'You are Pro. Open the studio' : 'Go Pro with Cash App';
+  $('btnGoPro').textContent = st.pro ? `You are on ${planName()}. Open the studio` : 'Start your 3 free projects';
   $('btnHaveKey').hidden = !!st.pro;
-  if (st.pro) $('proNote').textContent = `Pro is on for this device until ${new Date(st.expires).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}.`;
+  if (st.pro) $('proNote').textContent = `${planName()} is on for this device until ${new Date(st.expires).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}.`;
 };
 initPro({ onChange: paintPro });
-$('btnGoPro').addEventListener('click', () => { if (isPro()) window.location.href = 'studio.html'; else openPro(); });
 $('btnHaveKey').addEventListener('click', () => { openPro(); setTimeout(() => document.getElementById('proKeyInput')?.focus(), 50); });
 
 // ---------------------------------------------------------------- chrome
