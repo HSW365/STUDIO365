@@ -287,10 +287,11 @@ function updateTuneStatus() {
   if (!P.tune.enabled) { el.textContent = `${t.name} plays untouched.`; return; }
   if (P.tuned && P.tuned.sig === tuneSig(t)) {
     let moved = 0, voiced = 0;
-    for (let i = 0; i < P.tuned.f0.length; i++) if (P.tuned.f0[i]) { voiced++; moved += Math.abs(P.tuned.shift[i]); }
+    const tr = isPro() ? P.tune.transpose : 0;   // a transpose is a choice, not a correction: leave it out of the count
+    for (let i = 0; i < P.tuned.f0.length; i++) if (P.tuned.f0[i]) { voiced++; moved += Math.abs(P.tuned.shift[i] - tr); }
     const avg = voiced ? (moved / voiced) * 100 : 0;
     el.textContent = voiced
-      ? `${t.name} is tuned. Notes moved ${avg.toFixed(0)} cents on average to land in ${D.NOTE_NAMES[P.tune.root]} ${D.SCALE_LABELS[P.tune.scale].toLowerCase()}.${isPro() && (P.tune.edits[t.id] || []).length ? ` ${P.tune.edits[t.id].length} placed by hand.` : ''}`
+      ? `${t.name} is tuned. Notes moved ${avg.toFixed(0)} cents on average to land in ${D.NOTE_NAMES[P.tune.root]} ${D.SCALE_LABELS[P.tune.scale].toLowerCase()}.${isPro() && (P.tune.edits[t.id] || []).length ? ` ${P.tune.edits[t.id].length} placed by hand.` : ''}${tr ? ` Whole take moved ${tr > 0 ? 'up' : 'down'} ${Math.abs(tr)} semitone${Math.abs(tr) === 1 ? '' : 's'}.` : ''}`
       : `No sung pitch found in ${t.name}. Spoken or whispered takes pass through untouched.`;
   }
 }

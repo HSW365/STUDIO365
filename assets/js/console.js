@@ -34,7 +34,7 @@ function control(node, { min, max, step, def, vertical = true, throwPx = null, g
     const px = throwPx || node.getBoundingClientRect()[vertical ? 'height' : 'width'];
     if (!throwPx && vertical) { // jump to where the track was pressed, then drag from there
       const r = node.getBoundingClientRect();
-      const pos = 1 - (e.clientY - r.top) / r.height;
+      const pos = Math.max(0, Math.min(1, 1 - (e.clientY - r.top - 11) / (r.height - 22)));   // the cap travels inside an 11 px inset
       if (!e.target.classList.contains('cap')) commit(min + pos * (max - min));
     }
     start = { y: e.clientY, v: get(), px };
