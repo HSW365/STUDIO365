@@ -6,6 +6,7 @@ import * as Store from './store.js';
 import { initPro, isPro, requirePro, openPro } from './pro.js';
 import { PRESETS } from './presets.js';
 import * as Pack from './pack.js';
+import { runJob } from './dsp-jobs.js';
 
 const $ = (id) => document.getElementById(id);
 const DEFAULT_TUNE = { enabled: true, root: 9, scale: 'minor', speedMs: 15, amount: 100, keepVibrato: 30 };
@@ -41,19 +42,46 @@ function newProject() {
 }
 
 // ------------------------------------------------------------------ worker
-const worker = new Worker(new URL('./dsp-worker.js', import.meta.url), { type: 'module' });
+// Heavy audio jobs run in a background worker. If this browser can't start it (or it never answers),
+// the same jobs run on the page instead: slower to respond while they work, but everything still works.
+let worker = null, workerOk = false, workerDead = false;
 let wid = 0;
 const pending = new Map();
-worker.onmessage = (e) => {
-  const p = pending.get(e.data.id);
-  if (!p) return;
-  pending.delete(e.data.id);
-  e.data.ok ? p.res(e.data.result) : p.rej(new Error(e.data.error));
-};
-worker.onerror = (e) => { console.error(e); toast('The audio engine hit an error. Reload the page to restart it.', true); };
-const work = (type, payload, transfer = []) => new Promise((res, rej) => {
-  const id = ++wid; pending.set(id, { res, rej }); worker.postMessage({ id, type, payload }, transfer);
+const runLocal = (type, payload) => new Promise((res, rej) => {
+  setTimeout(() => { try { res(runJob(type, payload).result); } catch (err) { rej(err); } }, 0);
 });
+function killWorker() {
+  if (workerDead) return;
+  workerDead = true; workerOk = false;
+  try { worker && worker.terminate(); } catch { /* already gone */ }
+  // anything that was waiting on the worker gets redone on the page
+  for (const [, p] of pending) (p.payload ? runLocal(p.type, p.payload).then(p.res, p.rej) : p.rej(new Error('The audio engine restarted. Try that again.')));
+  pending.clear();
+}
+try {
+  worker = new Worker(new URL('./dsp-worker.js', import.meta.url), { type: 'module' });
+  worker.onmessage = (e) => {
+    if (e.data.result === 'pong') { workerOk = true; return; }
+    const p = pending.get(e.data.id);
+    if (!p) return;
+    pending.delete(e.data.id);
+    e.data.ok ? p.res(e.data.result) : p.rej(new Error(e.data.error));
+  };
+  worker.onerror = (e) => { console.warn('Audio worker failed, running on the page instead.', e && e.message); killWorker(); };
+  worker.postMessage({ id: 0, type: 'ping' });
+  setTimeout(() => { if (!workerOk) killWorker(); }, 4000);
+} catch (err) { console.warn('Audio worker unavailable, running on the page instead.', err); workerDead = true; }
+const work = (type, payload, transfer = []) => {
+  if (workerDead || !worker) return runLocal(type, payload);
+  return new Promise((res, rej) => {
+    const id = ++wid;
+    // until the worker has proven it is alive, keep the data here too so the job can be redone locally
+    const keep = !workerOk;
+    pending.set(id, { res, rej, type, payload: keep ? payload : null });
+    try { worker.postMessage({ id, type, payload }, keep ? [] : transfer); }
+    catch (err) { pending.delete(id); runLocal(type, payload).then(res, rej); }
+  });
+};
 
 // ------------------------------------------------------------------ audio context
 function audio() {
