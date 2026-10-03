@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/base.css">
   <link rel="stylesheet" href="assets/css/studio.css">
+  <link rel="stylesheet" href="assets/css/console.css">
   <link rel="stylesheet" href="assets/css/pro.css">
   <script>
     // If anything breaks, say so on screen instead of leaving dead buttons.
@@ -102,13 +103,63 @@
         </div>
       </div>
 
-      <div class="pitch-panel" id="pitchPanel" hidden>
-        <div class="panel-head">
-          <h2>Pitch</h2>
-          <p class="legend"><i class="sw raw"></i>What you sang <i class="sw tuned"></i>Where it lands</p>
+      <div class="editbar" role="toolbar" aria-label="Editing tools">
+        <div class="eb-group seg" role="group" aria-label="Pointer tool">
+          <button type="button" id="toolSelect" aria-pressed="true" title="Drag across the vocal to select a part of it">Select</button>
+          <button type="button" id="toolMove" aria-pressed="false" title="Drag the vocal left or right to move it against the beat">Move</button>
         </div>
-        <canvas id="pitchCanvas" aria-label="Pitch graph of the selected take"></canvas>
+        <div class="eb-group">
+          <button type="button" class="eb" data-edit="trim" title="Keep only the selection" disabled>Trim</button>
+          <button type="button" class="eb" data-edit="remove" title="Cut the selection out and close the gap" disabled>Cut out</button>
+          <button type="button" class="eb" data-edit="silence" title="Mute the selection and leave the timing alone" disabled>Silence</button>
+        </div>
+        <div class="eb-group">
+          <button type="button" class="eb" data-edit="fadeIn" title="Fade in across the selection" disabled>Fade in</button>
+          <button type="button" class="eb" data-edit="fadeOut" title="Fade out across the selection" disabled>Fade out</button>
+        </div>
+        <div class="eb-group">
+          <button type="button" class="eb" data-edit="down" title="Turn the selection (or the whole take) down 1 dB" disabled>&minus;1 dB</button>
+          <button type="button" class="eb" data-edit="up" title="Turn the selection (or the whole take) up 1 dB" disabled>+1 dB</button>
+          <button type="button" class="eb" data-edit="normalize" title="Bring the loudest peak to -3 dB" disabled>Normalize</button>
+          <button type="button" class="eb" data-edit="reverse" title="Play the selection (or the whole take) backwards" disabled>Reverse</button>
+        </div>
+        <div class="eb-group">
+          <button type="button" class="eb" data-edit="copy" title="Make a new take from the selection, for ad-libs and stacks" disabled>To new take</button>
+          <button type="button" class="eb" id="btnLoop" aria-pressed="false" title="Play the selection round and round (L)" disabled>Loop</button>
+        </div>
+        <div class="eb-group">
+          <button type="button" class="eb" id="btnUndo" title="Undo (Ctrl+Z)" disabled>Undo</button>
+          <button type="button" class="eb" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
+        </div>
+        <div class="eb-group eb-zoom">
+          <button type="button" class="eb" id="zoomOut" title="Zoom out" aria-label="Zoom out">&minus;</button>
+          <output id="zoomOutLabel">Fit</output>
+          <button type="button" class="eb" id="zoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+        </div>
+        <p class="eb-sel" id="selReadout" aria-live="polite">Drag across the vocal to select.</p>
       </div>
+
+      <div class="pitch-panel" id="pitchPanel" hidden>
+        <div class="pitch-side">
+          <h2>Pitch</h2>
+          <p class="legend"><i class="sw raw"></i>You sang</p>
+          <p class="legend"><i class="sw tuned"></i>It lands</p>
+          <p class="legend"><i class="sw note"></i>Notes</p>
+          <button class="btn ghost small" type="button" id="btnResetNotes" hidden>Reset my notes</button>
+        </div>
+        <div class="pitch-main">
+          <canvas id="pitchCanvas" aria-label="Pitch editor. Drag a note up or down to place it. Double-click a note to put it back."></canvas>
+          <p class="pitch-hint" id="pitchHint">Drag a note up or down to place it by hand. Double-click puts it back. Alt-click leaves that note untuned.<span class="pro-pill">Pro</span></p>
+        </div>
+      </div>
+
+      <section class="console" aria-label="Mixing console">
+        <div class="panel-head">
+          <h2>Console</h2>
+          <p class="legend">Faders, pan, mute and solo answer while it plays. Click a channel name to open its EQ and dynamics.</p>
+        </div>
+        <div class="strips" id="strips"></div>
+      </section>
 
       <div class="takes">
         <div class="panel-head">
@@ -152,30 +203,120 @@
           <input id="f-keepVibrato" type="range" min="0" max="100" step="1">
         </div>
         <p class="note" id="tuneStatus">Record or import a take, then the tuning runs automatically.</p>
+
+        <h3 class="pro-h">Tune Pro<span class="pro-pill">Pro</span></h3>
+        <p class="note">The same engine, opened up. Shape how the tuning moves, shift the whole take, change the voice, and place notes by hand in the pitch editor.</p>
+        <div class="fader" data-key="humanize" data-group="tune" data-pro="Tune Pro">
+          <div class="fader-head"><label for="f-humanize">Humanize</label><output></output></div>
+          <input id="f-humanize" type="range" min="0" max="100" step="1">
+          <div class="fader-scale"><span>Every note tight</span><span>Long notes breathe</span></div>
+        </div>
+        <div class="fader" data-key="flex" data-group="tune" data-pro="Tune Pro">
+          <div class="fader-head"><label for="f-flex">Flex</label><output></output></div>
+          <input id="f-flex" type="range" min="0" max="100" step="1">
+          <div class="fader-scale"><span>Tune everything</span><span>Leave bends and slides</span></div>
+        </div>
+        <div class="fader" data-key="glideMs" data-group="tune" data-pro="Tune Pro">
+          <div class="fader-head"><label for="f-glideMs">Note glide</label><output></output></div>
+          <input id="f-glideMs" type="range" min="0" max="200" step="5">
+          <div class="fader-scale"><span>Step between notes</span><span>Slide between notes</span></div>
+        </div>
+        <div class="fader" data-key="transpose" data-group="tune" data-pro="Tune Pro">
+          <div class="fader-head"><label for="f-transpose">Transpose</label><output></output></div>
+          <input id="f-transpose" type="range" min="-12" max="12" step="1">
+        </div>
+        <div class="fader" data-key="formant" data-group="tune" data-pro="Tune Pro">
+          <div class="fader-head"><label for="f-formant">Voice character</label><output></output></div>
+          <input id="f-formant" type="range" min="-5" max="5" step="0.5">
+          <div class="fader-scale"><span>Deeper</span><span>Brighter</span></div>
+        </div>
+        <div class="fader" data-key="detune" data-group="tune" data-pro="Tune Pro">
+          <div class="fader-head"><label for="f-detune">Fine tune</label><output></output></div>
+          <input id="f-detune" type="range" min="-50" max="50" step="1">
+          <div class="fader-scale"><span>For beats that sit flat</span><span>or sharp</span></div>
+        </div>
+        <div class="keys-head"><span>Notes the tuning can land on</span><button class="link" type="button" id="btnKeysReset" hidden>Back to the scale</button></div>
+        <div class="keys" id="noteKeys" role="group" aria-label="Notes the tuning can land on"></div>
       </section>
 
       <section class="tab-panel" id="panel-mix" role="tabpanel" aria-labelledby="tab-mix" hidden>
-        <label class="field"><span>Vocal preset</span><select id="presetSelect"><option value="">Choose a sound…</option></select></label>
-        <p class="note" id="presetAbout">A preset sets tuning, tone and space in one pick. Adjust anything after.</p>
-        <button class="btn ghost full" type="button" id="btnBalance" disabled>Balance vocal to beat</button>
-        <h3>Levels</h3>
-        <div class="fader" data-key="vocalDb" data-group="mix"><div class="fader-head"><label for="f-vocalDb">Vocal</label><output></output></div><input id="f-vocalDb" type="range" min="-24" max="12" step="0.5"></div>
-        <div class="fader" data-key="beatDb" data-group="mix"><div class="fader-head"><label for="f-beatDb">Beat</label><output></output></div><input id="f-beatDb" type="range" min="-24" max="6" step="0.5"></div>
-        <div class="fader" data-key="pan" data-group="mix"><div class="fader-head"><label for="f-pan">Vocal pan</label><output></output></div><input id="f-pan" type="range" min="-100" max="100" step="1"></div>
-        <div class="fader" data-key="vocalOffsetMs" data-group="mix"><div class="fader-head"><label for="f-vocalOffsetMs">Vocal timing</label><output></output></div><input id="f-vocalOffsetMs" type="range" min="-250" max="250" step="1"></div>
-        <h3>Tone</h3>
-        <div class="fader" data-key="hpf" data-group="mix"><div class="fader-head"><label for="f-hpf">Low cut</label><output></output></div><input id="f-hpf" type="range" min="20" max="250" step="1"></div>
-        <div class="fader" data-key="body" data-group="mix"><div class="fader-head"><label for="f-body">Body</label><output></output></div><input id="f-body" type="range" min="-6" max="6" step="0.5"></div>
-        <div class="fader" data-key="presence" data-group="mix"><div class="fader-head"><label for="f-presence">Presence</label><output></output></div><input id="f-presence" type="range" min="-6" max="8" step="0.5"></div>
-        <div class="fader" data-key="air" data-group="mix"><div class="fader-head"><label for="f-air">Air</label><output></output></div><input id="f-air" type="range" min="-6" max="8" step="0.5"></div>
-        <div class="fader" data-key="sibilance" data-group="mix"><div class="fader-head"><label for="f-sibilance">Tame harsh S sounds</label><output></output></div><input id="f-sibilance" type="range" min="0" max="10" step="0.5"></div>
-        <div class="fader" data-key="gate" data-group="mix"><div class="fader-head"><label for="f-gate">Noise gate</label><output></output></div><input id="f-gate" type="range" min="0" max="100" step="1"></div>
-        <h3>Character</h3>
-        <div class="fader" data-key="comp" data-group="mix"><div class="fader-head"><label for="f-comp">Compression</label><output></output></div><input id="f-comp" type="range" min="0" max="100" step="1"></div>
-        <div class="fader" data-key="warmth" data-group="mix"><div class="fader-head"><label for="f-warmth">Warmth</label><output></output></div><input id="f-warmth" type="range" min="0" max="100" step="1"></div>
-        <div class="fader" data-key="reverb" data-group="mix"><div class="fader-head"><label for="f-reverb">Reverb</label><output></output></div><input id="f-reverb" type="range" min="0" max="100" step="1"></div>
-        <div class="fader" data-key="delay" data-group="mix"><div class="fader-head"><label for="f-delay">Echo (1/8 note)</label><output></output></div><input id="f-delay" type="range" min="0" max="100" step="1"></div>
-        <button class="btn ghost small" type="button" id="btnResetMix">Reset mix</button>
+        <div class="chan-tabs seg" role="group" aria-label="Channel">
+          <button type="button" data-ch="vocal" aria-pressed="true">Vocal</button>
+          <button type="button" data-ch="beat" aria-pressed="false">Beat</button>
+          <button type="button" data-ch="rev" aria-pressed="false">Reverb</button>
+          <button type="button" data-ch="delay" aria-pressed="false">Echo</button>
+          <button type="button" data-ch="master" aria-pressed="false">Bus</button>
+        </div>
+
+        <div class="chan" data-ch="vocal">
+          <label class="field"><span>Vocal preset</span><select id="presetSelect"><option value="">Choose a sound…</option></select></label>
+          <p class="note" id="presetAbout">A preset sets tuning, tone and space in one pick. Adjust anything after.</p>
+          <button class="btn ghost full" type="button" id="btnBalance" disabled>Balance vocal to beat</button>
+
+          <h3>EQ</h3>
+          <canvas id="eqCanvas" class="eq-canvas" aria-label="Vocal EQ curve. Drag a point to move a band. Scroll over a point to change its width."></canvas>
+          <div class="band-tabs seg" id="bandTabs" role="group" aria-label="EQ band"></div>
+          <div class="fader" id="bandFreq"><div class="fader-head"><label for="f-bandFreq">Frequency</label><output></output></div><input id="f-bandFreq" type="range" min="0" max="1000" step="1"></div>
+          <div class="fader" id="bandGain"><div class="fader-head"><label for="f-bandGain">Gain</label><output></output></div><input id="f-bandGain" type="range" min="-12" max="12" step="0.5"></div>
+          <div class="fader" id="bandQ"><div class="fader-head"><label for="f-bandQ">Width</label><output></output></div><input id="f-bandQ" type="range" min="0" max="100" step="1"><div class="fader-scale"><span>Wide</span><span>Narrow</span></div></div>
+
+          <h3>Compressor</h3>
+          <label class="switch-row"><span>Compressor</span><input type="checkbox" id="compOn" checked role="switch"><i></i></label>
+          <div class="gr" aria-hidden="true"><span>Gain reduction</span><div class="gr-bar"><i id="grComp"></i></div><output id="grCompVal">0.0 dB</output></div>
+          <div class="fader" data-key="compThr" data-group="mix"><div class="fader-head"><label for="f-compThr">Threshold</label><output></output></div><input id="f-compThr" type="range" min="-50" max="0" step="0.5"></div>
+          <div class="fader" data-key="compRatio" data-group="mix"><div class="fader-head"><label for="f-compRatio">Ratio</label><output></output></div><input id="f-compRatio" type="range" min="1" max="12" step="0.1"></div>
+          <div class="fader" data-key="compAtk" data-group="mix"><div class="fader-head"><label for="f-compAtk">Attack</label><output></output></div><input id="f-compAtk" type="range" min="0.5" max="80" step="0.5"></div>
+          <div class="fader" data-key="compRel" data-group="mix"><div class="fader-head"><label for="f-compRel">Release</label><output></output></div><input id="f-compRel" type="range" min="20" max="600" step="5"></div>
+          <div class="fader" data-key="compMakeup" data-group="mix"><div class="fader-head"><label for="f-compMakeup">Make-up gain</label><output></output></div><input id="f-compMakeup" type="range" min="0" max="24" step="0.5"></div>
+
+          <h3>De-esser</h3>
+          <div class="gr" aria-hidden="true"><span>Ducking</span><div class="gr-bar"><i id="grDeess"></i></div><output id="grDeessVal">0.0 dB</output></div>
+          <div class="fader" data-key="sibilance" data-group="mix"><div class="fader-head"><label for="f-sibilance">Tame harsh S sounds</label><output></output></div><input id="f-sibilance" type="range" min="0" max="10" step="0.5"></div>
+          <div class="fader" data-key="deessHz" data-group="mix"><div class="fader-head"><label for="f-deessHz">Where the S sits</label><output></output></div><input id="f-deessHz" type="range" min="3000" max="11000" step="100"></div>
+
+          <h3>Clean-up and color</h3>
+          <div class="fader" data-key="gate" data-group="mix"><div class="fader-head"><label for="f-gate">Noise gate</label><output></output></div><input id="f-gate" type="range" min="0" max="100" step="1"></div>
+          <div class="fader" data-key="warmth" data-group="mix"><div class="fader-head"><label for="f-warmth">Warmth (saturation)</label><output></output></div><input id="f-warmth" type="range" min="0" max="100" step="1"></div>
+
+          <h3>Sends</h3>
+          <div class="fader" data-key="reverb" data-group="mix"><div class="fader-head"><label for="f-reverb">To reverb</label><output></output></div><input id="f-reverb" type="range" min="0" max="100" step="1"></div>
+          <div class="fader" data-key="delay" data-group="mix"><div class="fader-head"><label for="f-delay">To echo</label><output></output></div><input id="f-delay" type="range" min="0" max="100" step="1"></div>
+
+          <h3>Timing</h3>
+          <div class="fader" data-key="vocalOffsetMs" data-group="mix"><div class="fader-head"><label for="f-vocalOffsetMs">Vocal timing</label><output></output></div><input id="f-vocalOffsetMs" type="range" min="-250" max="250" step="1"></div>
+        </div>
+
+        <div class="chan" data-ch="beat" hidden>
+          <p class="note">Shape the beat around the voice. A small dip in the vocal pocket lets the words through without turning the beat down.</p>
+          <div class="fader" data-key="beatLow" data-group="mix"><div class="fader-head"><label for="f-beatLow">Low end</label><output></output></div><input id="f-beatLow" type="range" min="-12" max="12" step="0.5"></div>
+          <div class="fader" data-key="beatMid" data-group="mix"><div class="fader-head"><label for="f-beatMid">Vocal pocket (2.8 kHz)</label><output></output></div><input id="f-beatMid" type="range" min="-12" max="12" step="0.5"></div>
+          <div class="fader" data-key="beatHigh" data-group="mix"><div class="fader-head"><label for="f-beatHigh">Top end</label><output></output></div><input id="f-beatHigh" type="range" min="-12" max="12" step="0.5"></div>
+        </div>
+
+        <div class="chan" data-ch="rev" hidden>
+          <p class="note">One room shared by the lead and every stacked voice. Send more or less of the vocal to it from the Vocal channel.</p>
+          <div class="fader" data-key="revDecay" data-group="mix"><div class="fader-head"><label for="f-revDecay">Decay</label><output></output></div><input id="f-revDecay" type="range" min="0.4" max="6" step="0.1"><div class="fader-scale"><span>Tight room</span><span>Big hall</span></div></div>
+          <div class="fader" data-key="revPre" data-group="mix"><div class="fader-head"><label for="f-revPre">Pre-delay</label><output></output></div><input id="f-revPre" type="range" min="0" max="120" step="1"><div class="fader-scale"><span>Close</span><span>Vocal stays up front</span></div></div>
+          <div class="fader" data-key="revTone" data-group="mix"><div class="fader-head"><label for="f-revTone">Brightness</label><output></output></div><input id="f-revTone" type="range" min="1500" max="16000" step="100"></div>
+          <div class="fader" data-key="revLowCut" data-group="mix"><div class="fader-head"><label for="f-revLowCut">Low cut</label><output></output></div><input id="f-revLowCut" type="range" min="60" max="800" step="10"></div>
+        </div>
+
+        <div class="chan" data-ch="delay" hidden>
+          <p class="note">Echoes lock to the tempo. Send the vocal to it from the Vocal channel.</p>
+          <label class="field"><span>Echo time</span><select id="delayNote"></select></label>
+          <div class="fader" data-key="delayFb" data-group="mix"><div class="fader-head"><label for="f-delayFb">Repeats</label><output></output></div><input id="f-delayFb" type="range" min="0" max="85" step="1"></div>
+          <div class="fader" data-key="delayTone" data-group="mix"><div class="fader-head"><label for="f-delayTone">Brightness</label><output></output></div><input id="f-delayTone" type="range" min="800" max="12000" step="100"></div>
+          <div class="fader" data-key="delayWide" data-group="mix"><div class="fader-head"><label for="f-delayWide">Bounce side to side</label><output></output></div><input id="f-delayWide" type="range" min="0" max="100" step="1"></div>
+        </div>
+
+        <div class="chan" data-ch="master" hidden>
+          <p class="note">The mix bus, before mastering. Glue squeezes the vocal and beat together so they move as one record.</p>
+          <div class="gr" aria-hidden="true"><span>Glue</span><div class="gr-bar"><i id="grGlue"></i></div><output id="grGlueVal">0.0 dB</output></div>
+          <div class="fader" data-key="glue" data-group="mix"><div class="fader-head"><label for="f-glue">Glue compression</label><output></output></div><input id="f-glue" type="range" min="0" max="100" step="1"></div>
+          <p class="note">Loudness target and the limiter are on the Master tab.</p>
+        </div>
+
+        <button class="btn ghost small" type="button" id="btnResetMix">Reset the whole mix</button>
       </section>
 
       <section class="tab-panel" id="panel-stack" role="tabpanel" aria-labelledby="tab-stack" hidden>
@@ -231,6 +372,7 @@
       <button type="button" class="export-opt" data-format="stem"><b>Vocal stem WAV</b><span>Your processed vocal alone, for a producer or engineer.</span></button>
       <button type="button" class="export-opt pro-opt" id="btnReleasePack"><b>Release pack<span class="pro-pill">Pro</span></b><span>Everything a distributor asks for in one ZIP: masters, tagged MP3, 3000 px cover and a release sheet.</span></button>
     </div>
+    <p class="note warn export-note" id="exportNote" hidden></p>
     <div class="export-progress" id="exportProgress" hidden><div class="bar"><i id="exportBar"></i></div><p id="exportMsg">Rendering</p></div>
   </dialog>
 

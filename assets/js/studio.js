@@ -1,6 +1,8 @@
 // STUDIO365 studio — record, tune, mix, master, export. Everything runs in the browser; sessions live in IndexedDB.
 import * as D from './dsp.js';
-import { renderMix, DEFAULT_MIX } from './mixer.js';
+import { renderMix, createGraph, migrateMix, compFromMacro, DEFAULT_MIX, DELAY_NOTES } from './mixer.js';
+import * as Edit from './edit.js';
+import { initConsole, syncConsole, selectStrip, kickMeters, initEq, drawEq, selectBand, selectedBand, EQ_BANDS } from './console.js';
 import { vocalBeatBalance, BALANCE_TARGET } from './check.js';
 import * as Store from './store.js';
 import { initPro, isPro, requirePro, openPro } from './pro.js';
@@ -9,7 +11,7 @@ import * as Pack from './pack.js';
 import { runJob } from './dsp-jobs.js';
 
 const $ = (id) => document.getElementById(id);
-const DEFAULT_TUNE = { enabled: true, root: 9, scale: 'minor', speedMs: 15, amount: 100, keepVibrato: 30 };
+const DEFAULT_TUNE = { enabled: true, root: 9, scale: 'minor', speedMs: 15, amount: 100, keepVibrato: 30, humanize: 0, flex: 0, glideMs: 0, transpose: 0, formant: 0, detune: 0, mask: null, edits: {} };
 const DEFAULT_MASTER = { enabled: true, target: -14, ceiling: -1 };
 const DEFAULT_STACK = { double: 0, harmony: 'off', harmonyLevel: 50, takes: {} };
 const DEFAULTS = { tune: DEFAULT_TUNE, mix: DEFAULT_MIX, stack: DEFAULT_STACK };
@@ -21,7 +23,13 @@ let ctx = null;
 let mixCache = null;          // { sig, channels, buffer, stats }
 let renderToken = 0;
 let tuneToken = 0;
-let playing = false, playSrc = null, playStartCtx = 0, position = 0;
+let playing = false, playStartCtx = 0, position = 0;
+let live = null, liveBusy = null, playSrcs = [], playDur = 0, playSig = '', playToken = 0;   // the live console
+const bufCache = new WeakMap();
+let zoom = 1, viewStart = 0, sel = null, tool = 'select', loopOn = false, tlDrag = null;       // timeline view + selection (seconds)
+let undoStack = [], redoStack = [];
+let pitchDrag = null;
+const segCache = new WeakMap();
 let recording = false, recFrom = 0, recStartAt = 0, beatLive = null, clickTimer = null;
 let micStream = null, micSrc = null, recNode = null, monitorGain = null, silentOut = null;
 let recResolve = null;
@@ -36,7 +44,7 @@ function newProject() {
   return {
     id: uid(), name: 'Untitled session', created: Date.now(), updated: Date.now(), sr: null,
     bpm: 90, key: null, beat: null, takes: [], activeTake: null,
-    tune: { ...DEFAULT_TUNE }, mix: { ...DEFAULT_MIX }, master: { ...DEFAULT_MASTER }, tuned: null,
+    tune: { ...DEFAULT_TUNE, edits: {} }, mix: migrateMix({}), master: { ...DEFAULT_MASTER }, tuned: null,
     stack: { ...DEFAULT_STACK, takes: {} }, preset: '', release: null, cover: null,
   };
 }
@@ -130,7 +138,17 @@ function projectDuration() {
   if (mixCache) d = Math.max(d, mixCache.channels[0].length / sr);
   return d;
 }
-function tuneSig(t) { return JSON.stringify([t.id, P.tune.root, P.tune.scale, P.tune.speedMs, P.tune.amount, P.tune.keepVibrato]); }
+// What the tuning engine is asked to do for a take. The Tune Pro controls only count for Pro members.
+function tuneSettings(t) {
+  const T = P.tune, pro = isPro();
+  return {
+    root: T.root, scale: T.scale, speedMs: T.speedMs, amount: T.amount / 100, keepVibrato: T.keepVibrato / 100,
+    humanize: pro ? T.humanize / 100 : 0, flex: pro ? T.flex / 100 : 0, glideMs: pro ? T.glideMs : 0,
+    transpose: pro ? T.transpose : 0, formant: pro ? T.formant : 0, detune: pro ? T.detune : 0,
+    mask: pro && T.mask ? T.mask : null, edits: pro && T.edits[t.id] ? T.edits[t.id] : [],
+  };
+}
+function tuneSig(t) { return JSON.stringify([t.id, t.rev || 0, tuneSettings(t)]); }
 function vocalSignal() {
   const t = activeTake();
   if (!t) return null;
@@ -159,7 +177,7 @@ async function buildLayers() {
     const lead = gated(vocalSignal());
     const off = base + (t.start || 0) * 1000;
     if (S.double > 0) {
-      const sig = JSON.stringify([t.id, P.tune.enabled && P.tuned ? P.tuned.sig : 'raw', P.mix.gate]);
+      const sig = JSON.stringify([t.id, t.rev || 0, P.tune.enabled && P.tuned ? P.tuned.sig : 'raw', P.mix.gate]);
       if (!stackCache.double || stackCache.double.sig !== sig) {
         setRenderState('Building your doubles…', true);
         stackCache.double = { sig, ...(await work('double', { x: lead.slice(), sr: P.sr })) };
@@ -168,7 +186,7 @@ async function buildLayers() {
       out.push({ audio: stackCache.double.left, offsetMs: off, db, pan: -72 }, { audio: stackCache.double.right, offsetMs: off, db, pan: 72 });
     }
     if (S.harmony !== 'off' && S.harmonyLevel > 0) {
-      const sig = JSON.stringify([t.id, S.harmony, P.tune.root, P.tune.scale, P.tune.keepVibrato]);
+      const sig = JSON.stringify([t.id, t.rev || 0, S.harmony, P.tune.root, P.tune.scale, P.tune.keepVibrato]);
       if (!stackCache.harmony || stackCache.harmony.sig !== sig) {
         setRenderState('Singing the harmony…', true);
         const r = await work('harmony', { x: t.audio.slice(), sr: P.sr, mode: S.harmony, settings: { root: P.tune.root, scale: P.tune.scale, keepVibrato: P.tune.keepVibrato / 100 } });
@@ -185,7 +203,7 @@ async function buildLayers() {
       let c = stackCache.takes.get(tk.id);
       if (!c || c.sig !== sig) {
         setRenderState(`Tuning ${tk.name} for the stack…`, true);
-        const r = await work('autotune', { x: tk.audio.slice(), sr: P.sr, settings: { root: P.tune.root, scale: P.tune.scale, speedMs: P.tune.speedMs, amount: P.tune.amount / 100, keepVibrato: P.tune.keepVibrato / 100 } });
+        const r = await work('autotune', { x: tk.audio.slice(), sr: P.sr, settings: tuneSettings(tk) });
         c = { sig, audio: r.audio }; stackCache.takes.set(tk.id, c);
       }
       audio = c.audio;
@@ -199,7 +217,7 @@ function renderSig() {
   const t = activeTake();
   return JSON.stringify({
     stack: stackActive() ? P.stack : null,
-    beat: P.beat ? P.beat.id : null, take: t ? t.id : null, start: t ? t.start : 0,
+    beat: P.beat ? P.beat.id : null, take: t ? t.id : null, rev: t ? t.rev || 0 : 0, start: t ? t.start : 0,
     tuned: t && P.tune.enabled && P.tuned && P.tuned.sig === tuneSig(t) ? P.tuned.sig : 'raw',
     mix: P.mix, master: P.master, bpm: P.bpm,
   });
@@ -249,12 +267,9 @@ async function runTune() {
   const token = ++tuneToken;
   setRenderState(`Tuning ${t.name} to ${D.NOTE_NAMES[P.tune.root]} ${D.SCALE_LABELS[P.tune.scale].toLowerCase()}…`, true);
   try {
-    const res = await work('autotune', {
-      x: t.audio.slice(), sr: P.sr,
-      settings: { root: P.tune.root, scale: P.tune.scale, speedMs: P.tune.speedMs, amount: P.tune.amount / 100, keepVibrato: P.tune.keepVibrato / 100 },
-    });
+    const res = await work('autotune', { x: t.audio.slice(), sr: P.sr, settings: tuneSettings(t) });
     if (token !== tuneToken) return;
-    P.tuned = { sig, takeId: t.id, audio: res.audio, f0: res.f0, shift: res.shift, hop: res.hop, win: res.win };
+    P.tuned = { sig, takeId: t.id, audio: res.audio, f0: res.f0, shift: res.shift, target: res.target, hop: res.hop, win: res.win };
     markDirty();
     drawPitch();
     drawTimeline();
@@ -275,19 +290,23 @@ function updateTuneStatus() {
     for (let i = 0; i < P.tuned.f0.length; i++) if (P.tuned.f0[i]) { voiced++; moved += Math.abs(P.tuned.shift[i]); }
     const avg = voiced ? (moved / voiced) * 100 : 0;
     el.textContent = voiced
-      ? `${t.name} is tuned. Notes moved ${avg.toFixed(0)} cents on average to land in ${D.NOTE_NAMES[P.tune.root]} ${D.SCALE_LABELS[P.tune.scale].toLowerCase()}.`
+      ? `${t.name} is tuned. Notes moved ${avg.toFixed(0)} cents on average to land in ${D.NOTE_NAMES[P.tune.root]} ${D.SCALE_LABELS[P.tune.scale].toLowerCase()}.${isPro() && (P.tune.edits[t.id] || []).length ? ` ${P.tune.edits[t.id].length} placed by hand.` : ''}`
       : `No sung pitch found in ${t.name}. Spoken or whispered takes pass through untouched.`;
   }
 }
 
 // ------------------------------------------------------------------ mixing
+// Settings reach the live console at once. The offline bounce behind it (loudness, export, record check)
+// follows a moment later, and waits a little longer while you are listening.
 function scheduleRender(delay = 220) {
+  applyLive();
   clearTimeout(renderTimer);
-  renderTimer = setTimeout(runRender, delay);
+  renderTimer = setTimeout(runRender, playing ? Math.max(delay, 450) : delay);
 }
 async function runRender() {
   if (!P.beat && !activeTake()) { mixCache = null; updateTransport(); setRenderState('Load a beat or record a take to start.'); return; }
   const sig = renderSig();
+  if (playing && liveSig() !== playSig) restartPlayback();
   if (mixCache && mixCache.sig === sig) { setRenderState(readyText()); return; }
   const token = ++renderToken;
   setRenderState('Mixing…', true);
@@ -310,16 +329,11 @@ async function runRender() {
     } else {
       stats = { lufs: null, peakDb: D.gainToDb(D.peak(channels)), reductionDb: 0 };
     }
-    const c = audio();
-    const buffer = c.createBuffer(2, channels[0].length, P.sr);
-    buffer.copyToChannel(channels[0], 0); buffer.copyToChannel(channels[1], 1);
-    const wasPlaying = playing;
-    const at = currentPosition();
-    mixCache = { sig, channels, buffer, stats };
+    mixCache = { sig, channels, stats };
     updateStats();
     updateTransport();
+    applyLive();
     setRenderState(readyText());
-    if (wasPlaying) { stopPlayback(true); startPlayback(at); }
   } catch (err) {
     console.error(err);
     if (token === renderToken) { setRenderState('Mix failed.'); toast(`Mixing failed: ${err.message}`, true); }
@@ -338,38 +352,105 @@ function updateStats() {
   $('statGr').textContent = s && s.reductionDb != null ? `${Math.abs(s.reductionDb).toFixed(1)} dB` : '–';
 }
 
-// ------------------------------------------------------------------ playback
+// ------------------------------------------------------------------ playback (the live console)
+// Playback runs through the console itself, so every fader, mute, EQ point and send answers while it plays.
+async function liveGraph() {
+  if (live) return live;
+  if (!liveBusy) liveBusy = createGraph(audio(), { live: true }).then((g) => { live = g; applyLive(); return g; });
+  return liveBusy;
+}
+function applyLive() {
+  if (!live) return;
+  live.update(P.mix, P.bpm);
+  const s = mixCache?.stats;
+  live.setMaster({ on: P.master.enabled, gainDb: s && s.gainDb != null ? s.gainDb : 0, ceiling: P.master.ceiling });
+}
+function monoBuffer(arr) {
+  let b = bufCache.get(arr);
+  if (!b) { b = audio().createBuffer(1, arr.length, P.sr); b.copyToChannel(arr, 0); bufCache.set(arr, b); }
+  return b;
+}
+function beatBuffer() {
+  const ch = P.beat.channels;
+  let b = bufCache.get(ch);
+  if (!b) { b = audio().createBuffer(ch.length, ch[0].length, P.sr); ch.forEach((c, i) => b.copyToChannel(c, i)); bufCache.set(ch, b); }
+  return b;
+}
+// Everything that decides which audio is loaded on the console. If it changes mid-play, playback reloads in place.
+function liveSig() {
+  const t = activeTake();
+  return JSON.stringify([
+    P.beat ? P.beat.id : 0, t ? [t.id, t.rev || 0, t.start || 0] : 0,
+    t && P.tune.enabled && P.tuned && P.tuned.sig === tuneSig(t) ? P.tuned.sig : 'raw',
+    P.mix.gate, P.mix.vocalOffsetMs, stackActive() ? P.stack : 0,
+  ]);
+}
 function currentPosition() {
   if (playing && ctx) return Math.max(0, ctx.currentTime - playStartCtx);
   return position;
 }
+function killSources() {
+  for (const s of playSrcs) { try { s.stop(); } catch { /* not started */ } try { s.disconnect(); } catch { /* gone */ } }
+  playSrcs = [];
+}
 async function startPlayback(from = position) {
-  if (!mixCache) { await runRender(); if (!mixCache) return; }
+  if (recording || (!P.beat && !activeTake())) return;
   const c = audio();
   await c.resume();
-  const dur = mixCache.buffer.duration;
+  const token = ++playToken;
+  killSources();
+  let G, layers;
+  try {
+    if (!mixCache) await runRender();
+    G = await liveGraph();
+    layers = await buildLayers();
+  } catch (err) { console.error(err); toast(`Playback failed: ${err.message}`, true); return; }
+  if (token !== playToken) return;
+  const t = activeTake(), sr = P.sr;
+  const lead = t ? gated(vocalSignal()) : null;
+  const leadOff = t ? (t.start || 0) + P.mix.vocalOffsetMs / 1000 : 0;
+  const tail = Math.max(2.5, P.mix.revDecay + 0.5);
+  let dur = P.beat ? P.beat.channels[0].length / sr : 0;
+  if (lead) dur = Math.max(dur, leadOff + lead.length / sr + tail);
+  for (const l of layers) dur = Math.max(dur, l.offsetMs / 1000 + l.audio.length / sr + tail);
   if (from >= dur - 0.05) from = 0;
-  playSrc = c.createBufferSource();
-  playSrc.buffer = mixCache.buffer;
-  playSrc.connect(c.destination);
-  playSrc.start(c.currentTime + 0.02, from);
-  playStartCtx = c.currentTime + 0.02 - from;
-  playing = true;
-  const src = playSrc;
-  src.onended = () => { if (playSrc === src && playing) { playing = false; position = 0; updateTransport(); drawTimeline(); } };
+  if (loopOn && sel && (from < sel.a || from >= sel.b - 0.02)) from = sel.a;
+  G.clearLayers();
+  const when = c.currentTime + 0.05;
+  const launch = (buffer, dest, off) => {
+    if (from - off >= buffer.duration) return;
+    const s = c.createBufferSource(); s.buffer = buffer; s.connect(dest);
+    if (from >= off) s.start(when, from - off); else s.start(when + (off - from), 0);
+    playSrcs.push(s);
+  };
+  if (P.beat) launch(beatBuffer(), G.inputs.beat, 0);
+  if (lead) launch(monoBuffer(lead), G.inputs.lead, leadOff);
+  for (const l of layers) launch(monoBuffer(l.audio), G.addLayer({ db: l.db, pan: l.pan }), l.offsetMs / 1000);
+  applyLive();
+  playStartCtx = when - from; playDur = dur; playSig = liveSig(); playing = true;
+  if (!$('renderState').classList.contains('busy') || mixCache?.sig === renderSig()) setRenderState(readyText());
   updateTransport();
+  kickMeters();
   requestAnimationFrame(tick);
 }
 function stopPlayback(keepPosition = true) {
-  if (playSrc) { try { playSrc.onended = null; playSrc.stop(); } catch { /* already stopped */ } playSrc = null; }
-  if (playing) position = keepPosition ? currentPosition() : 0;
+  playToken++;
+  if (playing) position = keepPosition ? Math.min(currentPosition(), projectDuration()) : 0;
+  killSources();
   playing = false;
   updateTransport();
   drawTimeline();
 }
+function restartPlayback(at = currentPosition()) { stopPlayback(true); position = at; return startPlayback(at); }
 function tick() {
+  if (playing) {
+    const pos = currentPosition();
+    if (loopOn && sel && pos >= sel.b) { restartPlayback(sel.a); return; }
+    if (pos >= playDur) { stopPlayback(false); drawPitch(); return; }
+  }
   $('clock').textContent = fmtTime(recording ? Math.max(0, ctx.currentTime - recStartAt + recFrom) : currentPosition());
   drawTimeline();
+  if (playing && !$('pitchPanel').hidden) drawPitch();
   if (playing || recording) requestAnimationFrame(tick);
 }
 
@@ -503,6 +584,7 @@ async function stopRecording() {
 function afterTakesChanged() {
   renderTakes();
   updateTransport();
+  updateEditUi();
   drawTimeline();
   markDirty();
   scheduleTune(0);
@@ -563,98 +645,443 @@ function fitCanvas(cv) {
 function peaksFor(arr, cols) {
   let m = peaksCache.get(arr);
   if (!m) { m = new Map(); peaksCache.set(arr, m); }
-  if (!m.has(cols)) m.set(cols, D.waveformPeaks(arr, cols));
+  if (!m.has(cols)) { if (m.size > 6) m.delete(m.keys().next().value); m.set(cols, D.waveformPeaks(arr, cols)); }
   return m.get(cols);
 }
 function drawWave(g, peaks, x0, y0, w, h, color, cols) {
   g.fillStyle = color;
   const mid = y0 + h / 2;
-  for (let c = 0; c < cols; c++) {
+  const from = Math.max(0, Math.ceil(-x0)), to = Math.min(cols, Math.floor(w - x0));
+  for (let c = from; c < to; c++) {
     const mn = peaks[c * 2], mx = peaks[c * 2 + 1];
     const top = mid - mx * (h / 2) * 0.92, bot = mid - mn * (h / 2) * 0.92;
     g.fillRect(x0 + c, top, 1, Math.max(1, bot - top));
   }
 }
+// The stretch of the song on screen. Zoom 1 shows all of it; the pitch editor shares the same window.
+function timelineDur() { return Math.max(projectDuration(), recording ? ctx.currentTime - recStartAt + recFrom + 4 : 0, 8); }
+function view() {
+  const dur = timelineDur(), span = dur / zoom;
+  viewStart = Math.max(0, Math.min(dur - span, viewStart));
+  return { t0: viewStart, span, dur };
+}
+function setZoom(z, around = currentPosition()) {
+  const v = view();
+  const frac = Math.max(0, Math.min(1, (around - v.t0) / v.span));
+  zoom = Math.max(1, Math.min(64, z));
+  viewStart = around - frac * (v.dur / zoom);
+  $('zoomOutLabel').textContent = zoom <= 1 ? 'Fit' : `${zoom >= 10 ? Math.round(zoom) : Math.round(zoom * 10) / 10}x`;
+  $('zoomOut').disabled = zoom <= 1;
+  drawTimeline(); drawPitch();
+}
+const takeOffset = (t) => (t.start || 0) + P.mix.vocalOffsetMs / 1000;
+
 function drawTimeline() {
   const cv = $('timelineCanvas');
   if (!cv.clientWidth) return;
   const { g, w, h } = fitCanvas(cv);
   const sr = P.sr || 48000;
-  const dur = Math.max(projectDuration(), recording ? ctx.currentTime - recStartAt + recFrom + 4 : 0, 8);
-  const pxPerSec = w / dur;
+  if (zoom > 1 && (playing || recording)) {
+    const v0 = view(), pos = recording ? ctx.currentTime - recStartAt + recFrom : currentPosition();
+    if (pos > v0.t0 + v0.span * 0.96 || pos < v0.t0) viewStart = pos - v0.span * 0.08;
+  }
+  const { t0, span } = view();
+  const pxPerSec = w / span;
+  const X = (t) => (t - t0) * pxPerSec;
   const laneH = h / 2;
   g.clearRect(0, 0, w, h);
   g.fillStyle = '#12121a'; g.fillRect(0, 0, w, laneH);
   g.fillStyle = '#15151f'; g.fillRect(0, laneH, w, laneH);
-  // bar grid
-  const bar = (60 / (P.bpm || 90)) * 4;
+  // bar grid, with beats once there is room for them
+  const beat = 60 / (P.bpm || 90), bar = beat * 4;
   if (bar * pxPerSec > 14) {
-    g.fillStyle = 'rgba(255,255,255,0.05)';
-    for (let t = 0; t < dur; t += bar) g.fillRect(Math.round(t * pxPerSec), 0, 1, h);
+    const fine = beat * pxPerSec > 22;
+    const step = fine ? beat : bar;
+    for (let k = Math.floor(t0 / step); k * step < t0 + span; k++) {
+      const onBar = !fine || k % 4 === 0;
+      g.fillStyle = onBar ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.03)';
+      g.fillRect(Math.round(X(k * step)), 0, 1, h);
+    }
   }
   g.fillStyle = '#262633'; g.fillRect(0, laneH, w, 1);
   if (P.beat) {
     const len = P.beat.channels[0].length;
     const cols = Math.max(1, Math.round((len / sr) * pxPerSec));
-    drawWave(g, peaksFor(P.beat.channels[0], cols), 0, 8, w, laneH - 16, 'rgba(34,211,238,0.55)', cols);
+    drawWave(g, peaksFor(P.beat.channels[0], cols), Math.round(X(0)), 8, w, laneH - 16, P.mix.mute.beat ? 'rgba(125,125,146,0.4)' : 'rgba(34,211,238,0.55)', cols);
   }
   const t = activeTake();
   const v = vocalSignal();
   if (t && v) {
-    const x0 = Math.round(((t.start || 0) + P.mix.vocalOffsetMs / 1000) * pxPerSec);
+    const x0 = Math.round(X(takeOffset(t)));
     const cols = Math.max(1, Math.round((v.length / sr) * pxPerSec));
     const tuned = v !== t.audio;
-    drawWave(g, peaksFor(v, cols), x0, laneH + 8, w, laneH - 16, tuned ? 'rgba(168,85,247,0.85)' : 'rgba(237,237,242,0.6)', cols);
+    // the clip itself, so it reads as something you can pick up and move
+    g.fillStyle = tuned ? 'rgba(168,85,247,0.08)' : 'rgba(237,237,242,0.05)';
+    g.fillRect(x0, laneH + 5, cols, laneH - 10);
+    g.fillStyle = tuned ? 'rgba(168,85,247,0.5)' : 'rgba(237,237,242,0.3)';
+    g.fillRect(x0, laneH + 5, 1, laneH - 10); g.fillRect(x0 + cols - 1, laneH + 5, 1, laneH - 10);
+    const col = P.mix.mute.vocal ? 'rgba(125,125,146,0.5)' : tuned ? 'rgba(168,85,247,0.85)' : 'rgba(237,237,242,0.6)';
+    drawWave(g, peaksFor(v, cols), x0, laneH + 8, w, laneH - 16, col, cols);
+  }
+  if (sel) {
+    const a = X(sel.a), b = X(sel.b);
+    g.fillStyle = loopOn ? 'rgba(251,191,36,0.16)' : 'rgba(34,211,238,0.16)';
+    g.fillRect(a, laneH + 1, b - a, laneH - 1);
+    g.fillStyle = loopOn ? '#fbbf24' : '#22d3ee';
+    g.fillRect(Math.round(a), laneH + 1, 1, laneH - 1); g.fillRect(Math.round(b), laneH + 1, 1, laneH - 1);
+    if (loopOn) g.fillRect(a, 0, b - a, 3);
   }
   if (recording) {
-    const a = recFrom * pxPerSec, b = Math.max(a, (ctx.currentTime - recStartAt + recFrom) * pxPerSec);
+    const a = X(recFrom), b = Math.max(a, X(ctx.currentTime - recStartAt + recFrom));
     g.fillStyle = 'rgba(239,68,68,0.22)'; g.fillRect(a, laneH + 1, b - a, laneH - 1);
     g.fillStyle = '#ef4444'; g.fillRect(b, 0, 2, h);
   } else {
-    const x = currentPosition() * pxPerSec;
-    g.fillStyle = '#ededf2'; g.fillRect(Math.round(x), 0, 2, h);
+    g.fillStyle = '#ededf2'; g.fillRect(Math.round(X(currentPosition())), 0, 2, h);
   }
   $('clockTotal').textContent = `/ ${fmtTime(projectDuration(), false)}`;
 }
 
+// ---- pitch editor: what was sung, where it lands, and the notes as blocks you can pick up
+function currentTuned() {
+  const t = activeTake();
+  return P.tuned && t && P.tuned.takeId === t.id && P.tune.enabled && P.tuned.sig === tuneSig(t) ? P.tuned : null;
+}
+function pitchGeom() {
+  const t = activeTake(), tuned = currentTuned();
+  if (!t || !tuned || !tuned.f0.some((v) => v > 0)) return null;
+  const cv = $('pitchCanvas');
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return null;
+  const { f0, shift, hop, win } = tuned;
+  const target = tuned.target || null;
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < f0.length; i++) if (f0[i]) {
+    const m = D.freqToMidi(f0[i]);
+    lo = Math.min(lo, m, m + shift[i]); hi = Math.max(hi, m, m + shift[i]);
+  }
+  if (pitchDrag) { lo = Math.min(lo, pitchDrag.note - 1); hi = Math.max(hi, pitchDrag.note + 1); }
+  lo = Math.floor(lo) - 2; hi = Math.ceil(hi) + 2;
+  const { t0, span } = view();
+  const sr = P.sr, off = takeOffset(t);
+  const tOf = (i) => off + (i * hop + win / 2) / sr;         // project time of frame i
+  const X = (time) => ((time - t0) / span) * w;
+  const Y = (m) => h - 8 - ((m - lo) / (hi - lo)) * (h - 16);
+  const semi = (h - 16) / (hi - lo);
+  let segs = null;
+  if (target) { segs = segCache.get(tuned.f0); if (!segs) { segs = D.noteSegments(f0, target); segCache.set(tuned.f0, segs); } }
+  const edits = isPro() ? P.tune.edits[t.id] || [] : [];
+  // seconds on the take's own clock for a frame edge
+  const edge = (i) => (i * hop + win / 2 - hop / 2) / sr;
+  return { t, tuned, f0, shift, hop, win, w, h, lo, hi, X, Y, semi, tOf, off, segs, edits, edge, sr, t0, span };
+}
 function drawPitch() {
   const panel = $('pitchPanel');
-  const t = activeTake();
-  const tuned = P.tuned && t && P.tuned.takeId === t.id && P.tune.enabled && P.tuned.sig === tuneSig(t) ? P.tuned : null;
+  const tuned = currentTuned();
   const voiced = tuned && tuned.f0.some((v) => v > 0);
   panel.hidden = !voiced;
   if (!voiced) return;
+  const G = pitchGeom();
+  if (!G) return;
   const cv = $('pitchCanvas');
   const { g, w, h } = fitCanvas(cv);
-  const { f0, shift } = tuned;
+  const { f0, shift, X, Y, semi, tOf, lo, hi, segs, edits, t } = G;
   const n = f0.length;
-  let lo = Infinity, hi = -Infinity;
-  for (let i = 0; i < n; i++) if (f0[i]) { const m = D.freqToMidi(f0[i]); lo = Math.min(lo, m); hi = Math.max(hi, m); }
   g.clearRect(0, 0, w, h);
-  lo = Math.floor(lo) - 2; hi = Math.ceil(hi) + 2;
-  const gutter = 36;
-  const y = (m) => h - 6 - ((m - lo) / (hi - lo)) * (h - 12);
-  const x = (i) => gutter + (i / (n - 1)) * (w - gutter - 4);
+  const mask = isPro() && P.tune.mask ? P.tune.mask : null;
   const scale = D.SCALES[P.tune.scale];
+  const allowed = (m) => (mask ? mask[((m % 12) + 12) % 12] : scale.includes((((m - P.tune.root) % 12) + 12) % 12));
   g.font = '10px "Space Mono", monospace';
   for (let m = lo; m <= hi; m++) {
-    const inScale = scale.includes((((m - P.tune.root) % 12) + 12) % 12);
-    g.fillStyle = inScale ? 'rgba(168,85,247,0.10)' : 'rgba(255,255,255,0.02)';
-    g.fillRect(gutter, y(m) - 0.5, w - gutter, 1);
-    if (inScale && (hi - lo) < 30) { g.fillStyle = '#7d7d92'; g.fillText(D.midiName(m), 2, y(m) + 3); }
+    const ok = allowed(m);
+    if (ok) { g.fillStyle = 'rgba(168,85,247,0.07)'; g.fillRect(0, Y(m) - semi / 2, w, Math.max(1, semi - 1)); }
+    else { g.fillStyle = 'rgba(255,255,255,0.03)'; g.fillRect(0, Y(m) - 0.5, w, 1); }
   }
+  // which frames are on screen
+  const frameAt = (x) => Math.round(((G.t0 + (x / w) * G.span - G.off) * G.sr - G.win / 2) / G.hop);
+  const i0 = Math.max(0, frameAt(0) - 2), i1 = Math.min(n, frameAt(w) + 3);
+  // notes
+  const bh = Math.max(7, Math.min(22, semi * 0.82));
+  const isEdited = (a, b) => edits.some((e) => !e.off && e.b > a + 0.01 && e.a < b - 0.01);
+  for (const e of edits) {
+    if (!e.off) continue;
+    const xa = X(G.off + e.a), xb = X(G.off + e.b);
+    if (xb < 0 || xa > w) continue;
+    g.fillStyle = 'rgba(125,125,146,0.16)'; g.fillRect(xa, 0, xb - xa, h);
+    g.fillStyle = '#7d7d92'; g.fillText('untuned', xa + 4, 12);
+  }
+  if (segs) for (const s of segs) {
+    const a = G.edge(s.i0), b = G.edge(s.i1);
+    if (edits.some((e) => e.off && e.b > a + 0.01 && e.a < b - 0.01)) continue;
+    const xa = X(G.off + a), xb = X(G.off + b);
+    if (xb < 0 || xa > w) continue;
+    const dragging = pitchDrag && pitchDrag.seg === s;
+    const note = dragging ? pitchDrag.note : s.note;
+    const edited = dragging || isEdited(a, b);
+    g.fillStyle = edited ? 'rgba(251,191,36,0.26)' : 'rgba(168,85,247,0.26)';
+    g.strokeStyle = edited ? '#fbbf24' : 'rgba(168,85,247,0.9)';
+    g.lineWidth = dragging ? 2 : 1;
+    const y = Y(note) - bh / 2, bw = Math.max(3, xb - xa - 1);
+    g.beginPath();
+    if (g.roundRect) g.roundRect(xa + 0.5, y + 0.5, bw, bh, 3); else g.rect(xa + 0.5, y + 0.5, bw, bh);
+    g.fill(); g.stroke();
+    if (bw > 26) { g.fillStyle = edited ? '#fbbf24' : '#d6b4fe'; g.fillText(D.midiName(note), xa + 4, y + bh / 2 + 3.5); }
+  }
+  // the lines
+  const step = Math.max(1, Math.floor((i1 - i0) / (w * 2)));
   const line = (fn, color, width) => {
     g.strokeStyle = color; g.lineWidth = width; g.lineJoin = 'round'; g.beginPath();
     let pen = false;
-    for (let i = 0; i < n; i++) {
+    for (let i = i0; i < i1; i += step) {
       if (!f0[i]) { pen = false; continue; }
-      const px = x(i), py = y(fn(i));
+      const px = X(tOf(i)), py = Y(fn(i));
       if (!pen) { g.moveTo(px, py); pen = true; } else g.lineTo(px, py);
     }
     g.stroke();
   };
   line((i) => D.freqToMidi(f0[i]), '#6b6b80', 1.5);
-  line((i) => D.freqToMidi(f0[i]) + shift[i], '#a855f7', 2);
+  line((i) => D.freqToMidi(f0[i]) + shift[i], '#ededf2', 1.5);
+  // note names down the left edge
+  g.fillStyle = 'rgba(10,10,15,0.72)'; g.fillRect(0, 0, 30, h);
+  for (let m = lo; m <= hi; m++) if (allowed(m) && semi >= 9) { g.fillStyle = '#7d7d92'; g.fillText(D.midiName(m), 3, Y(m) + 3); }
+  const px = X(currentPosition());
+  if (px >= 0 && px <= w) { g.fillStyle = 'rgba(237,237,242,0.7)'; g.fillRect(Math.round(px), 0, 1, h); }
+  $('btnResetNotes').hidden = !(isPro() && (P.tune.edits[t.id] || []).length);
+}
+function pitchHit(e) {
+  const G = pitchGeom();
+  if (!G || !G.segs) return null;
+  const r = $('pitchCanvas').getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  const time = G.t0 + (x / G.w) * G.span;
+  for (const ed of G.edits) if (ed.off && time >= G.off + ed.a && time <= G.off + ed.b) return { G, off: ed, time, y };
+  const pad = Math.max(6, G.semi / 2 + 3);
+  for (const s of G.segs) {
+    const a = G.off + G.edge(s.i0), b = G.off + G.edge(s.i1);
+    if (time >= a && time <= b && Math.abs(y - G.Y(s.note)) <= pad) return { G, seg: s, time, y };
+  }
+  return { G, time, y };
+}
+function setNoteEdit(t, a, b, payload) {
+  const list = (P.tune.edits[t.id] || []).filter((e) => e.b <= a + 0.005 || e.a >= b - 0.005);
+  if (payload) list.push({ a, b, ...payload });
+  list.sort((p, q) => p.a - q.a);
+  P.tune.edits = { ...P.tune.edits, [t.id]: list };
+  markDirty(); scheduleTune(0);
+}
+function bindPitchEditor() {
+  const cv = $('pitchCanvas');
+  cv.addEventListener('pointerdown', (e) => {
+    if (e.button || recording) return;
+    const hit = pitchHit(e);
+    if (!hit) return;
+    if (hit.off) { if (e.altKey && requirePro('Tune Pro')) setNoteEdit(hit.G.t, hit.off.a, hit.off.b, null); return; }
+    if (!hit.seg) { seekTo(hit.time); return; }
+    const a = hit.G.edge(hit.seg.i0), b = hit.G.edge(hit.seg.i1);
+    if (e.altKey) { if (requirePro('Tune Pro')) setNoteEdit(hit.G.t, a, b, { off: true }); return; }
+    cv.setPointerCapture(e.pointerId);
+    pitchDrag = { seg: hit.seg, a, b, y0: e.clientY, from: hit.seg.note, note: hit.seg.note, semi: hit.G.semi, moved: false };
+    e.preventDefault();
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!pitchDrag) { const h = pitchHit(e); cv.style.cursor = h && h.seg ? 'ns-resize' : 'default'; return; }
+    const note = pitchDrag.from + Math.round((pitchDrag.y0 - e.clientY) / pitchDrag.semi);
+    if (note !== pitchDrag.note) { pitchDrag.note = Math.max(24, Math.min(96, note)); pitchDrag.moved = true; drawPitch(); }
+  });
+  const end = () => {
+    const d = pitchDrag; pitchDrag = null;
+    if (!d) return;
+    const t = activeTake();
+    if (d.moved && d.note !== d.from && t) {
+      if (requirePro('Tune Pro')) { setNoteEdit(t, d.a, d.b, { note: d.note }); setRenderState(`Moving that note to ${D.midiName(d.note)}…`, true); }
+    }
+    drawPitch();
+  };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  cv.addEventListener('dblclick', (e) => {
+    const hit = pitchHit(e), t = activeTake();
+    if (!hit || !t || !isPro()) return;
+    if (hit.off) setNoteEdit(t, hit.off.a, hit.off.b, null);
+    else if (hit.seg) setNoteEdit(t, hit.G.edge(hit.seg.i0), hit.G.edge(hit.seg.i1), null);
+  });
+  $('btnResetNotes').addEventListener('click', () => {
+    const t = activeTake(); if (!t) return;
+    P.tune.edits = { ...P.tune.edits, [t.id]: [] }; markDirty(); scheduleTune(0);
+    toast('Your hand-placed notes are cleared. The scale decides again.');
+  });
+}
+
+// ------------------------------------------------------------------ editing
+function seekTo(time) {
+  const was = playing;
+  stopPlayback(true);
+  position = Math.max(0, Math.min(time, projectDuration()));
+  if (was) startPlayback(position); else { updateTransport(); drawTimeline(); drawPitch(); }
+}
+// The selection, in samples of the active take.
+function selRange(t) {
+  if (!sel) return null;
+  const off = takeOffset(t), sr = P.sr;
+  const a = Math.max(0, Math.round((sel.a - off) * sr)), b = Math.min(t.audio.length, Math.round((sel.b - off) * sr));
+  return b - a > 32 ? [a, b] : null;
+}
+function updateEditUi() {
+  const t = activeTake();
+  const r = t ? selRange(t) : null;
+  const busy = recording;
+  document.querySelectorAll('.eb[data-edit]').forEach((b) => {
+    const k = b.dataset.edit;
+    const needsSel = ['trim', 'remove', 'silence', 'fadeIn', 'fadeOut', 'copy'].includes(k);
+    b.disabled = busy || !t || (needsSel && !r);
+  });
+  $('btnLoop').disabled = !sel && !loopOn;
+  $('btnLoop').setAttribute('aria-pressed', String(loopOn));
+  $('btnUndo').disabled = busy || !undoStack.length;
+  $('btnRedo').disabled = busy || !redoStack.length;
+  $('toolSelect').setAttribute('aria-pressed', String(tool === 'select'));
+  $('toolMove').setAttribute('aria-pressed', String(tool === 'move'));
+  $('timeline').classList.toggle('tool-move', tool === 'move');
+  $('selReadout').textContent = sel
+    ? `Selected ${fmtTime(sel.a)} to ${fmtTime(sel.b)} (${(sel.b - sel.a).toFixed(2)} s)${r ? '' : '. No vocal in that range.'}`
+    : !t ? 'Record or import a vocal to edit it.' : tool === 'move' ? 'Drag the vocal left or right to move it against the beat.' : 'Drag across the vocal to select. Gain, Normalize and Reverse work on the whole take when nothing is selected.';
+}
+function snapshot(t) { return { takeId: t.id, audio: t.audio, start: t.start || 0, edits: P.tune.edits[t.id] || [] }; }
+function restore(snap) {
+  const t = P.takes.find((x) => x.id === snap.takeId);
+  if (!t) return null;
+  const now = snapshot(t);
+  t.audio = snap.audio; t.start = snap.start; t.rev = (t.rev || 0) + 1;
+  P.tune.edits = { ...P.tune.edits, [t.id]: snap.edits };
+  invalidateTake(t);
+  return now;
+}
+function invalidateTake(t) {
+  if (P.tuned && P.tuned.takeId === t.id) P.tuned = null;
+  stackCache.double = null; stackCache.harmony = null; stackCache.takes.delete(t.id);
+}
+function commitEdit(t, audio, start, edits, msg) {
+  undoStack.push(snapshot(t)); if (undoStack.length > 12) undoStack.shift();
+  redoStack = [];
+  t.audio = audio; t.start = Math.max(0, start); t.rev = (t.rev || 0) + 1;
+  P.tune.edits = { ...P.tune.edits, [t.id]: edits };
+  invalidateTake(t);
+  afterTakesChanged();
+  if (msg) toast(msg);
+}
+function applyEdit(kind) {
+  const t = activeTake();
+  if (!t || recording) return;
+  const sr = P.sr, r = selRange(t);
+  const needsSel = ['trim', 'remove', 'silence', 'fadeIn', 'fadeOut', 'copy'].includes(kind);
+  if (needsSel && !r) { toast('Drag across the vocal first to choose the part to edit.'); return; }
+  const [a, b] = r || [0, t.audio.length];
+  const aS = a / sr, bS = b / sr, where = r ? 'the selection' : t.name;
+  const edits = P.tune.edits[t.id] || [];
+  const start = t.start || 0;
+  switch (kind) {
+    case 'trim': commitEdit(t, Edit.trim(t.audio, a, b, sr), start + aS, Edit.shiftNoteEdits(edits, 'trim', aS, bS), `${t.name} trimmed to the selection.`); sel = null; break;
+    case 'remove':
+      if (t.audio.length - (b - a) < sr * 0.2) { toast('That would leave nothing of the take. Delete the take instead.'); return; }
+      commitEdit(t, Edit.remove(t.audio, a, b, sr), start, Edit.shiftNoteEdits(edits, 'remove', aS, bS), 'Cut out. Everything after it moved up to close the gap.'); sel = null; break;
+    case 'silence': commitEdit(t, Edit.silence(t.audio, a, b, sr), start, Edit.shiftNoteEdits(edits, 'silence', aS, bS), 'Silenced. The timing around it is untouched.'); break;
+    case 'fadeIn': commitEdit(t, Edit.fadeIn(t.audio, a, b), start, edits, 'Fade in added.'); break;
+    case 'fadeOut': commitEdit(t, Edit.fadeOut(t.audio, a, b), start, edits, 'Fade out added.'); break;
+    case 'up': case 'down': commitEdit(t, Edit.gain(t.audio, a, b, kind === 'up' ? 1 : -1, sr), start, edits, `${kind === 'up' ? '+1' : '-1'} dB on ${where}.`); break;
+    case 'normalize': {
+      const n = Edit.normalize(t.audio, a, b, sr, -3);
+      if (Math.abs(n.db) < 0.1) { toast(`${r ? 'The selection' : t.name} already peaks at -3 dB.`); return; }
+      commitEdit(t, n.audio, start, edits, `${n.db > 0 ? 'Turned up' : 'Turned down'} ${Math.abs(n.db).toFixed(1)} dB so ${where} peaks at -3 dB.`); break;
+    }
+    case 'reverse': commitEdit(t, Edit.reverse(t.audio, a, b), start, Edit.shiftNoteEdits(edits, 'reverse', aS, bS), `${r ? 'Selection' : t.name} reversed.`); break;
+    case 'copy': {
+      const num = Math.max(...P.takes.map((x) => x.num || 0)) + 1;
+      P.takes.push({ id: uid(), num, name: `${t.name} cut`.slice(0, 40), audio: Edit.trim(t.audio, a, b, sr), start: start + aS, created: Date.now() });
+      afterTakesChanged();
+      toast('New take made from the selection. Stack it behind the lead from the Stack tab, or pick it as the lead.');
+      break;
+    }
+    default: return;
+  }
+  updateEditUi();
+}
+function undo() {
+  const s = undoStack.pop(); if (!s) return;
+  const now = restore(s); if (now) redoStack.push(now);
+  afterTakesChanged(); toast('Undone.');
+}
+function redo() {
+  const s = redoStack.pop(); if (!s) return;
+  const now = restore(s); if (now) undoStack.push(now);
+  afterTakesChanged(); toast('Redone.');
+}
+function bindEditing() {
+  document.querySelectorAll('.eb[data-edit]').forEach((b) => b.addEventListener('click', () => applyEdit(b.dataset.edit)));
+  $('btnUndo').addEventListener('click', undo);
+  $('btnRedo').addEventListener('click', redo);
+  $('toolSelect').addEventListener('click', () => { tool = 'select'; updateEditUi(); });
+  $('toolMove').addEventListener('click', () => { tool = 'move'; updateEditUi(); });
+  $('btnLoop').addEventListener('click', toggleLoop);
+  $('zoomIn').addEventListener('click', () => setZoom(zoom * 2, sel ? (sel.a + sel.b) / 2 : currentPosition()));
+  $('zoomOut').addEventListener('click', () => setZoom(zoom / 2, sel ? (sel.a + sel.b) / 2 : currentPosition()));
+
+  const tl = $('timeline');
+  const at = (e) => { const r = tl.getBoundingClientRect(); const v = view(); return { time: v.t0 + ((e.clientX - r.left) / r.width) * v.span, lower: e.clientY > r.top + r.height / 2, pps: r.width / v.span }; };
+  tl.addEventListener('pointerdown', (e) => {
+    if (recording || e.button || e.target.closest('button')) return;
+    const p = at(e), t = activeTake();
+    tlDrag = { x0: e.clientX, t0: p.time, mode: p.lower && t ? tool : 'seek', moved: false, start: t ? t.start || 0 : 0, pps: p.pps };
+    tl.setPointerCapture(e.pointerId);
+  });
+  tl.addEventListener('pointermove', (e) => {
+    const d = tlDrag; if (!d) return;
+    if (!d.moved && Math.abs(e.clientX - d.x0) < 4) return;
+    d.moved = true;
+    const p = at(e);
+    if (d.mode === 'select') {
+      const dur = timelineDur();
+      sel = { a: Math.max(0, Math.min(d.t0, p.time)), b: Math.min(dur, Math.max(d.t0, p.time)) };
+      drawTimeline(); updateEditUi();
+    } else if (d.mode === 'move') {
+      const t = activeTake();
+      t.start = Math.max(0, d.start + (e.clientX - d.x0) / d.pps);
+      drawTimeline(); drawPitch();
+    }
+  });
+  const up = (e) => {
+    const d = tlDrag; tlDrag = null;
+    if (!d) return;
+    if (!d.moved) { if (d.mode === 'select' && sel) { sel = null; if (loopOn) { loopOn = false; } updateEditUi(); } seekTo(at(e).time); return; }
+    if (d.mode === 'select') {
+      if (sel && sel.b - sel.a < 0.03) sel = null;
+      updateEditUi(); drawTimeline();
+      if (sel && loopOn && playing) restartPlayback(sel.a);
+    } else if (d.mode === 'move') {
+      const t = activeTake();
+      undoStack.push({ takeId: t.id, audio: t.audio, start: d.start, edits: P.tune.edits[t.id] || [] }); if (undoStack.length > 12) undoStack.shift();
+      redoStack = [];
+      const ms = Math.round((t.start - d.start) * 1000);
+      markDirty(); updateEditUi(); scheduleRender(0);
+      toast(ms ? `${t.name} moved ${Math.abs(ms)} ms ${ms > 0 ? 'later' : 'earlier'}.` : `${t.name} is where it was.`);
+    }
+  };
+  tl.addEventListener('pointerup', up);
+  tl.addEventListener('pointercancel', () => { tlDrag = null; });
+  tl.addEventListener('wheel', (e) => {
+    const r = tl.getBoundingClientRect(), v = view();
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      setZoom(zoom * (e.deltaY < 0 ? 1.3 : 1 / 1.3), v.t0 + ((e.clientX - r.left) / r.width) * v.span);
+    } else if (zoom > 1 && (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey)) {
+      e.preventDefault();
+      viewStart += ((Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) / r.width) * v.span;
+      drawTimeline(); drawPitch();
+    }
+  }, { passive: false });
+}
+function toggleLoop() {
+  if (!sel && !loopOn) return;
+  loopOn = !loopOn;
+  updateEditUi(); drawTimeline();
+  if (loopOn && playing && sel) restartPlayback(sel.a);
 }
 
 // ------------------------------------------------------------------ UI binding
@@ -668,7 +1095,7 @@ function renderTakes() {
     const radio = document.createElement('input');
     radio.type = 'radio'; radio.name = 'take'; radio.checked = t.id === P.activeTake;
     radio.setAttribute('aria-label', `Use ${t.name}`);
-    radio.addEventListener('change', () => { P.activeTake = t.id; position = t.start || 0; afterTakesChanged(); });
+    radio.addEventListener('change', () => { const was = playing; stopPlayback(true); P.activeTake = t.id; if (!was) position = t.start || 0; afterTakesChanged(); if (was) startPlayback(position); });
     const name = document.createElement('input');
     name.className = 'take-name'; name.value = t.name; name.maxLength = 40; name.setAttribute('aria-label', 'Take name');
     name.addEventListener('change', () => { t.name = name.value.trim() || t.name; name.value = t.name; markDirty(); updateBeatUi(); });
@@ -682,6 +1109,8 @@ function renderTakes() {
       if (P.activeTake === t.id) P.activeTake = P.takes.length ? P.takes[P.takes.length - 1].id : null;
       if (P.tuned && P.tuned.takeId === t.id) P.tuned = null;
       delete P.stack.takes[t.id]; stackCache.takes.delete(t.id);
+      const ed = { ...P.tune.edits }; delete ed[t.id]; P.tune.edits = ed;
+      undoStack = undoStack.filter((u) => u.takeId !== t.id); redoStack = redoStack.filter((u) => u.takeId !== t.id);
       afterTakesChanged();
     });
     li.append(radio, name, len, del);
@@ -750,6 +1179,7 @@ function updateTransport() {
   $('btnCheck').disabled = !mixCache || recording;
   $('btnRewind').disabled = recording;
   if (!playing && !recording) $('clock').textContent = fmtTime(position);
+  updateEditUi();
 }
 
 function fmtVal(key, v) {
@@ -760,7 +1190,18 @@ function fmtVal(key, v) {
     case 'hpf': return `${v} Hz`;
     case 'vocalOffsetMs': return v == 0 ? 'On grid' : `${v > 0 ? 'Later' : 'Earlier'} ${Math.abs(v)} ms`;
     case 'speedMs': return v == 0 ? 'Instant' : `${v} ms`;
-    case 'gate': case 'double': case 'harmonyLevel': return v == 0 ? 'Off' : `${v}%`;
+    case 'gate': case 'double': case 'harmonyLevel': case 'glue': case 'humanize': case 'flex': case 'reverb': case 'delay': return v == 0 ? 'Off' : `${v}%`;
+    case 'beatLow': case 'beatMid': case 'beatHigh': case 'compMakeup': case 'mud': return `${v > 0 ? '+' : ''}${Number(v).toFixed(1)} dB`;
+    case 'compThr': return `${Number(v).toFixed(1)} dB`;
+    case 'compRatio': return `${Number(v).toFixed(1)} : 1`;
+    case 'compAtk': case 'compRel': case 'revPre': return `${v} ms`;
+    case 'deessHz': case 'revTone': case 'delayTone': case 'revLowCut': return v >= 1000 ? `${(v / 1000).toFixed(1)} kHz` : `${v} Hz`;
+    case 'revDecay': return `${Number(v).toFixed(1)} s`;
+    case 'delayWide': return v == 0 ? 'Center' : `${v}%`;
+    case 'glideMs': return v == 0 ? 'Step' : `${v} ms`;
+    case 'transpose': return v == 0 ? 'None' : `${v > 0 ? '+' : ''}${v} semitone${Math.abs(v) === 1 ? '' : 's'}`;
+    case 'formant': return v == 0 ? 'Natural' : `${v > 0 ? '+' : ''}${Number(v).toFixed(1)}`;
+    case 'detune': return v == 0 ? 'A = 440' : `${v > 0 ? '+' : ''}${v} cents`;
     default: return `${v}%`;
   }
 }
@@ -769,7 +1210,7 @@ function paintFader(input) {
   input.style.setProperty('--pct', `${pct}%`);
 }
 function syncControls() {
-  document.querySelectorAll('.fader').forEach((f) => {
+  document.querySelectorAll('.fader[data-group]').forEach((f) => {
     const input = f.querySelector('input'); const group = f.dataset.group, key = f.dataset.key;
     input.value = P[group][key];
     f.querySelector('output').textContent = fmtVal(key, P[group][key]);
@@ -785,17 +1226,122 @@ function syncControls() {
   document.querySelectorAll('input[name="target"]').forEach((r) => { r.checked = Number(r.value) === P.master.target; });
   $('bpm').value = P.bpm;
   $('projectName').value = P.name;
+  $('compOn').checked = !!P.mix.compOn;
+  $('delayNote').value = P.mix.delayNote;
+  renderKeys(); syncBand(); syncConsole(); drawEq();
   updateBeatUi();
+}
+
+// ---- the note keyboard: which notes the tuning may land on
+function allowedNotes() {
+  if (isPro() && P.tune.mask) return P.tune.mask.slice();
+  const sc = D.SCALES[P.tune.scale];
+  return Array.from({ length: 12 }, (_, pc) => sc.includes((((pc - P.tune.root) % 12) + 12) % 12));
+}
+function renderKeys() {
+  const box = $('noteKeys');
+  const ok = allowedNotes();
+  box.textContent = '';
+  D.NOTE_NAMES.forEach((name, pc) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'key' + (name.includes('#') ? ' sharp' : '') + (pc === P.tune.root ? ' root' : '');
+    b.textContent = name; b.setAttribute('aria-pressed', String(ok[pc]));
+    b.title = ok[pc] ? `${name} is in. Click to keep the tuning off it.` : `${name} is out. Click to let the tuning land on it.`;
+    b.addEventListener('click', () => {
+      if (!requirePro('Tune Pro')) return;
+      const next = allowedNotes(); next[pc] = !next[pc];
+      if (!next.some(Boolean)) { toast('Keep at least one note in.'); return; }
+      const sc = D.SCALES[P.tune.scale];
+      const same = next.every((v, i) => v === sc.includes((((i - P.tune.root) % 12) + 12) % 12));
+      P.tune.mask = same ? null : next;
+      renderKeys(); markDirty(); scheduleTune(0);
+    });
+    box.append(b);
+  });
+  $('btnKeysReset').hidden = !(isPro() && P.tune.mask);
+}
+
+// ---- console plumbing
+function setMix(key, v) {
+  P.mix[key] = v;
+  const f = document.querySelector(`.fader[data-group="mix"][data-key="${key}"]`);
+  if (f) { const input = f.querySelector('input'); input.value = v; f.querySelector('output').textContent = fmtVal(key, v); paintFader(input); }
+  markDirty(); scheduleRender();
+}
+function selectChannel(ch) {
+  if (ch === 'stack') { $('tab-stack').click(); selectStrip('stack'); return; }
+  $('tab-mix').click();
+  document.querySelectorAll('.chan-tabs button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ch === ch)));
+  document.querySelectorAll('.chan').forEach((c) => { c.hidden = c.dataset.ch !== ch; });
+  selectStrip(ch);
+  if (ch === 'vocal') drawEq();
+}
+const Q_MIN = 0.3, Q_MAX = 8;
+function syncBand() {
+  const b = selectedBand();
+  if (!b) return;
+  document.querySelectorAll('#bandTabs button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.band === b.id)));
+  const m = P.mix;
+  const setRow = (id, on, value, text) => {
+    const row = $(id), input = row.querySelector('input');
+    row.classList.toggle('off', !on); input.disabled = !on;
+    if (on) input.value = value;
+    row.querySelector('output').textContent = on ? text : 'n/a';
+    paintFader(input);
+  };
+  const hz = m[b.f];
+  setRow('bandFreq', true, Math.round((Math.log(hz / b.fMin) / Math.log(b.fMax / b.fMin)) * 1000), hz >= 1000 ? `${(hz / 1000).toFixed(2)} kHz` : `${Math.round(hz)} Hz`);
+  setRow('bandGain', !!b.g, b.g ? m[b.g] : 0, b.g ? `${m[b.g] > 0 ? '+' : ''}${Number(m[b.g]).toFixed(1)} dB` : '');
+  setRow('bandQ', !!b.q, b.q ? Math.round((Math.log(m[b.q] / Q_MIN) / Math.log(Q_MAX / Q_MIN)) * 100) : 0, b.q ? `Q ${Number(m[b.q]).toFixed(2)}` : '');
+}
+function bindConsole() {
+  initConsole({
+    root: $('strips'),
+    mix: () => P.mix,
+    set: (key, v) => { setMix(key, v); if (key.endsWith('Db')) { /* strip faders */ } },
+    reset: (keys) => { keys.forEach((k) => setMix(k, DEFAULT_MIX[k])); },
+    flag: (kind, ch, on) => {
+      P.mix[kind] = { ...P.mix[kind], [ch]: on };
+      syncConsole(); drawTimeline();
+      if (kind === 'mute') markDirty();
+      scheduleRender();
+    },
+    select: selectChannel,
+    graph: () => live,
+    playing: () => playing,
+    onFrame: (red, on) => {
+      const bar = (id, db) => { const v = red && on ? Math.min(0, db) : 0; $(id).style.width = `${Math.min(100, (Math.abs(v) / 18) * 100)}%`; $(`${id}Val`).textContent = `${v.toFixed(1)} dB`; };
+      if ($('panel-mix').hidden) return;
+      bar('grComp', red ? red.comp : 0); bar('grDeess', red ? red.deess : 0); bar('grGlue', red ? red.glue : 0);
+      if (on && live && !document.querySelector('.chan[data-ch="vocal"]').hidden) drawEq(live.fx.eq);
+    },
+  });
+  initEq($('eqCanvas'), { onSelect: syncBand });
+  EQ_BANDS.forEach((b) => {
+    const x = document.createElement('button'); x.type = 'button'; x.dataset.band = b.id; x.textContent = b.label; x.style.setProperty('--dot', b.color);
+    x.addEventListener('click', () => selectBand(b.id));
+    $('bandTabs').append(x);
+  });
+  $('f-bandFreq').addEventListener('input', (e) => { const b = selectedBand(); const hz = b.fMin * Math.pow(b.fMax / b.fMin, Number(e.target.value) / 1000); setMix(b.f, hz >= 1000 ? Math.round(hz / 10) * 10 : Math.round(hz)); syncBand(); drawEq(); });
+  $('f-bandGain').addEventListener('input', (e) => { const b = selectedBand(); if (!b.g) return; setMix(b.g, Number(e.target.value)); syncBand(); drawEq(); });
+  $('f-bandQ').addEventListener('input', (e) => { const b = selectedBand(); if (!b.q) return; setMix(b.q, Math.round(Q_MIN * Math.pow(Q_MAX / Q_MIN, Number(e.target.value) / 100) * 100) / 100); syncBand(); drawEq(); });
+  document.querySelectorAll('.chan-tabs button').forEach((b) => b.addEventListener('click', () => selectChannel(b.dataset.ch)));
+  $('compOn').addEventListener('change', (e) => { P.mix.compOn = e.target.checked; markDirty(); scheduleRender(); });
+  Object.entries(DELAY_NOTES).forEach(([k, n]) => $('delayNote').add(new Option(n.label, k)));
+  $('delayNote').addEventListener('change', (e) => { P.mix.delayNote = e.target.value; markDirty(); scheduleRender(); });
+  $('btnKeysReset').addEventListener('click', () => { P.tune.mask = null; renderKeys(); markDirty(); scheduleTune(0); });
+  selectStrip('vocal');
 }
 
 function bindControls() {
   D.NOTE_NAMES.forEach((n, i) => $('tuneRoot').add(new Option(n, String(i))));
   Object.entries(D.SCALE_LABELS).forEach(([k, label]) => $('tuneScale').add(new Option(label, k)));
 
-  document.querySelectorAll('.fader').forEach((f) => {
+  document.querySelectorAll('.fader[data-group]').forEach((f) => {
     const input = f.querySelector('input'); const group = f.dataset.group, key = f.dataset.key;
     input.addEventListener('input', () => {
       if (group === 'stack' && !isPro()) { input.value = P.stack[key]; paintFader(input); openPro('Vocal stacks'); return; }
+      if (f.dataset.pro && !isPro()) { input.value = P[group][key]; paintFader(input); openPro(f.dataset.pro); return; }
       P[group][key] = Number(input.value);
       f.querySelector('output').textContent = fmtVal(key, P[group][key]);
       paintFader(input);
@@ -808,8 +1354,8 @@ function bindControls() {
     });
   });
   $('tuneOn').addEventListener('change', (e) => { P.tune.enabled = e.target.checked; markDirty(); drawTimeline(); scheduleTune(0); });
-  $('tuneRoot').addEventListener('change', (e) => { P.tune.root = Number(e.target.value); updateBeatUi(); markDirty(); scheduleTune(0); });
-  $('tuneScale').addEventListener('change', (e) => { P.tune.scale = e.target.value; updateBeatUi(); markDirty(); scheduleTune(0); });
+  $('tuneRoot').addEventListener('change', (e) => { P.tune.root = Number(e.target.value); P.tune.mask = null; renderKeys(); updateBeatUi(); markDirty(); scheduleTune(0); });
+  $('tuneScale').addEventListener('change', (e) => { P.tune.scale = e.target.value; P.tune.mask = null; renderKeys(); updateBeatUi(); markDirty(); scheduleTune(0); });
   $('masterOn').addEventListener('change', (e) => { P.master.enabled = e.target.checked; markDirty(); scheduleRender(0); });
   document.querySelectorAll('input[name="target"]').forEach((r) => r.addEventListener('change', () => { P.master.target = Number(r.value); markDirty(); scheduleRender(0); }));
   $('bpm').addEventListener('change', (e) => {
@@ -825,7 +1371,7 @@ function bindControls() {
     scheduleRender(0);
   });
   $('btnBalance').addEventListener('click', balanceNow);
-  $('btnResetMix').addEventListener('click', () => { P.mix = { ...DEFAULT_MIX }; syncControls(); markDirty(); scheduleRender(0); });
+  $('btnResetMix').addEventListener('click', () => { P.mix = migrateMix({}); P.preset = ''; syncControls(); drawTimeline(); markDirty(); scheduleRender(0); toast('The console is back to its starting mix.'); });
 
   // stack + presets
   Object.entries(D.HARMONIES).forEach(([k, h]) => $('harmonySelect').add(new Option(h ? h.label : 'No harmony', k)));
@@ -863,24 +1409,15 @@ function bindControls() {
   // transport
   $('btnRecord').addEventListener('click', () => (recording ? stopRecording() : startRecording()));
   $('btnPlay').addEventListener('click', () => (playing ? stopPlayback(true) : startPlayback()));
-  $('btnRewind').addEventListener('click', () => { const was = playing; stopPlayback(false); position = 0; if (was) startPlayback(0); updateTransport(); drawTimeline(); });
+  $('btnRewind').addEventListener('click', () => { const was = playing; stopPlayback(false); position = 0; viewStart = 0; if (was) startPlayback(0); updateTransport(); drawTimeline(); drawPitch(); });
   $('optMonitor').addEventListener('change', (e) => {
     if (monitorGain) monitorGain.gain.setTargetAtTime(e.target.checked ? 1 : 0, audio().currentTime, 0.01);
     if (e.target.checked) toast('Wear headphones while you hear your mic, or the speakers will feed back.');
   });
 
-  // timeline seek + drag and drop
+  // timeline: seek, select, move (see bindEditing) + drag and drop
   const tl = $('timeline');
-  tl.addEventListener('click', (e) => {
-    if (recording) return;
-    const r = tl.getBoundingClientRect();
-    const dur = Math.max(projectDuration(), 8);
-    const at = ((e.clientX - r.left) / r.width) * dur;
-    const was = playing;
-    stopPlayback(true);
-    position = Math.max(0, Math.min(at, projectDuration()));
-    if (was) startPlayback(position); else { updateTransport(); drawTimeline(); }
-  });
+  bindEditing(); bindPitchEditor(); bindConsole();
   ['dragenter', 'dragover'].forEach((ev) => tl.addEventListener(ev, (e) => { e.preventDefault(); tl.classList.add('dragover'); }));
   ['dragleave', 'drop'].forEach((ev) => tl.addEventListener(ev, () => tl.classList.remove('dragover')));
   tl.addEventListener('drop', (e) => {
@@ -901,8 +1438,17 @@ function bindControls() {
     const tag = (e.target.tagName || '').toLowerCase();
     if (['input', 'select', 'textarea', 'button'].includes(tag) && !(tag === 'input' && ['range', 'radio', 'checkbox'].includes(e.target.type))) return;
     if (document.querySelector('dialog[open]')) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (!recording) (e.shiftKey ? redo() : undo()); return; }
+    if (mod && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); if (!recording) redo(); return; }
+    if (mod || e.altKey) return;
     if (e.code === 'Space') { e.preventDefault(); if (!recording) (playing ? stopPlayback(true) : startPlayback()); }
     if (e.key === 'r' || e.key === 'R') { e.preventDefault(); recording ? stopRecording() : startRecording(); }
+    if (e.key === 'l' || e.key === 'L') { e.preventDefault(); toggleLoop(); }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); applyEdit('silence'); }
+    if (e.key === 'Escape' && sel) { sel = null; loopOn = false; updateEditUi(); drawTimeline(); }
+    if (e.key === '=' || e.key === '+') setZoom(zoom * 2);
+    if (e.key === '-') setZoom(zoom / 2);
   });
 
   // sessions
@@ -914,10 +1460,19 @@ function bindControls() {
     loadIntoUi(newProject());
     toast('New session started. Your last one is saved under Sessions.');
   });
-  $('btnExport').addEventListener('click', () => { $('exportProgress').hidden = true; $('exportDialog').showModal(); });
+  $('btnExport').addEventListener('click', () => {
+    $('exportProgress').hidden = true;
+    const names = { vocal: 'the vocal', stack: 'the stack', beat: 'the beat', rev: 'the reverb', delay: 'the echo' };
+    const soloed = Object.keys(P.mix.solo).filter((k) => P.mix.solo[k]), muted = Object.keys(P.mix.mute).filter((k) => P.mix.mute[k]);
+    const note = $('exportNote');
+    note.hidden = !soloed.length && !muted.length;
+    note.textContent = soloed.length ? `Heads up: ${soloed.map((k) => names[k]).join(' and ')} ${soloed.length > 1 ? 'are' : 'is'} soloed, so the export will hold only that. Clear the solo on the console for the full record.`
+      : `Heads up: ${muted.map((k) => names[k]).join(' and ')} ${muted.length > 1 ? 'are' : 'is'} muted on the console and will be missing from the export.`;
+    $('exportDialog').showModal();
+  });
   document.querySelectorAll('.export-opt[data-format]').forEach((b) => b.addEventListener('click', () => exportAs(b.dataset.format)));
 
-  window.addEventListener('resize', () => { drawTimeline(); drawPitch(); });
+  window.addEventListener('resize', () => { drawTimeline(); drawPitch(); drawEq(); });
   window.addEventListener('beforeunload', (e) => { if (recording) { e.preventDefault(); e.returnValue = ''; } });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(saveTimer); if (P.beat || P.takes.length) save(); } });
 }
@@ -971,11 +1526,13 @@ function loadIntoUi(p) {
   P.stack = { ...DEFAULT_STACK, ...P.stack, takes: { ...(P.stack?.takes || {}) } };
   P.preset = P.preset || ''; P.release = P.release || null; P.cover = P.cover || null;
   stackCache = { double: null, harmony: null, takes: new Map() };
-  P.tune = { ...DEFAULT_TUNE, ...P.tune };
-  P.mix = { ...DEFAULT_MIX, ...P.mix };
+  P.tune = { ...DEFAULT_TUNE, ...P.tune, edits: { ...(P.tune?.edits || {}) } };
+  P.mix = migrateMix(P.mix);
+  zoom = 1; viewStart = 0; sel = null; loopOn = false; undoStack = []; redoStack = [];
+  $('zoomOutLabel').textContent = 'Fit'; $('zoomOut').disabled = true;
   P.master = { ...DEFAULT_MASTER, ...P.master };
   mixCache = null; position = 0; renderToken++; tuneToken++;
-  syncControls(); renderTakes(); updateTransport(); drawTimeline(); drawPitch(); updateStats(); updateTuneStatus();
+  syncControls(); renderTakes(); updateTransport(); drawTimeline(); drawPitch(); updateStats(); updateTuneStatus(); applyLive();
   if (P.beat || P.takes.length) { localStorage.setItem(LAST_KEY, P.id); scheduleTune(0); }
   else setRenderState('Load a beat or record a take to start.');
 }
@@ -1009,7 +1566,7 @@ function applyPreset(id) {
   if (!p) { P.preset = ''; showPresetAbout(); markDirty(); return; }
   if (p.pro && !requirePro(`The ${p.name} preset`)) { $('presetSelect').value = P.preset || ''; return; }
   P.tune = { ...P.tune, enabled: true, ...p.tune };
-  P.mix = { ...P.mix, ...p.mix };
+  P.mix = { ...P.mix, ...p.mix, ...(p.mix.comp != null ? compFromMacro(p.mix.comp) : {}) };
   if (p.stack && isPro()) P.stack = { ...P.stack, ...p.stack };
   P.preset = id;
   syncControls(); markDirty(); drawTimeline(); scheduleTune(0);
@@ -1023,8 +1580,8 @@ function onProChange() {
   b.textContent = isPro() ? 'Pro' : 'Go Pro';
   b.classList.toggle('on', isPro());
   b.title = isPro() ? 'Your Pro membership' : 'Unlock stacks, pro presets, record check and release packs';
-  renderStackTakes(); updateBeatUi();
-  if (P.beat || P.takes.length) scheduleRender(0);
+  renderStackTakes(); updateBeatUi(); renderKeys();
+  if (P.beat || P.takes.length) scheduleTune(0);
 }
 
 // resolves once the mix on screen matches the current settings
@@ -1320,6 +1877,7 @@ async function boot() {
   renderTakes();
   updateTransport();
   drawTimeline();
+  $('zoomOut').disabled = true;
   try {
     const last = localStorage.getItem(LAST_KEY);
     if (last) {

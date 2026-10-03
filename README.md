@@ -17,15 +17,19 @@ A full vocal studio that runs in the browser: record over a beat, pitch-correct 
 - **Record** over a beat with sample-accurate AudioWorklet capture, count-in, click track, mic monitoring, input meter, latency compensation, punch-in from the playhead. Unlimited takes.
 - **Import** beats and vocal files (MP3, WAV, M4A, FLAC, OGG); drag and drop onto the timeline.
 - **Key and tempo detection** from the beat (chroma + Krumhansl profiles, onset autocorrelation).
-- **Pitch correction**: YIN pitch tracking, scale snapping (major, minor, harmonic minor, pentatonics, chromatic), retune speed, strength, vibrato keep, WSOLA-aligned granular pitch shifting. Runs in a Web Worker.
-- **Mix chain**: low cut, mud cut, body, presence, sibilance cut, air, noise gate, compression with makeup, saturation, convolution reverb, tempo-synced 1/8 echo, pan, vocal timing nudge, auto vocal-to-beat balance.
+- **Pitch correction**: YIN pitch tracking with octave-error repair, scale snapping (major, minor, harmonic minor, pentatonics, chromatic), retune speed, strength, vibrato keep. The shifter is formant-preserving TD-PSOLA, so a corrected or transposed note keeps the singer's tone. Runs in a Web Worker.
+- **Console**: playback runs live through the mix graph, so every control answers while the song plays. Channel strips for Vocal, Stack, Beat, Reverb return, Echo return and Master, each with a long-throw fader and live meter; pan, mute and solo where they apply; gain-reduction meters on the vocal compressor and the limiter.
+- **Vocal channel**: 6-point EQ you drag on a curve (low cut, four bands with frequency, gain and width, high cut) over a live spectrum; compressor with threshold, ratio, attack, release and make-up; split-band de-esser; noise gate; saturation; reverb and echo sends; timing nudge; auto vocal-to-beat balance.
+- **Beat channel**: low end, vocal pocket and top end EQ. **Reverb**: decay, pre-delay, brightness, low cut. **Echo**: tempo-synced note values, repeats, brightness, side-to-side bounce. **Bus**: glue compression and trim.
+- **Editing**: drag to select part of the take, then trim, cut out, silence, fade in, fade out, clip gain, normalize, reverse, or lift the selection to a new take. Move the take against the beat, zoom the timeline, loop a selection. Undo and redo.
 - **Master**: ITU-R BS.1770 integrated loudness to -14 / -9 / -16 LUFS, lookahead brickwall limiter at -1 dB.
 - **Export**: 24-bit WAV master, MP3 320, MP3 128 (lamejs), processed vocal stem.
 - **Sessions** autosave to IndexedDB (audio included) and reopen on return.
-- Shortcuts: Space play/stop, R record.
+- Shortcuts: Space play/stop, R record, L loop, Ctrl+Z undo, Ctrl+Shift+Z redo, Delete silences the selection, + and - zoom.
 
 ### Pro (paid with Cash App)
 
+- **Tune Pro**: humanize, flex (leaves bends alone), note glide, transpose, voice character (formant), fine tune, a keyboard to pick exactly which notes the tuning may land on, and a pitch editor where each note is a block you drag to a new pitch or leave untuned.
 - **Vocal stacks**: wide doubles and an in-key harmony voice generated from the lead take, plus any other take stacked under the lead with its own level and pan.
 - **Six more presets** (three are free).
 - **A&R365 record check**: scores the finished record and the raw take (loudness, peaks, limiting, clipping, room noise, pitch, vocal-to-beat balance, mono, length) with one-click fixes.
@@ -52,8 +56,9 @@ Things to know:
 
 ```
 index.html  studio.html  admin.html  config.js  supabase.sql
-assets/css/   base.css  site.css  studio.css  pro.css
-assets/js/    dsp.js (engine)  dsp-worker.js  mixer.js  check.js  presets.js  pack.js  store.js
+assets/css/   base.css  site.css  studio.css  console.css  pro.css
+assets/js/    dsp.js (engine)  dsp-worker.js  mixer.js (console signal path)  console.js (strips, meters, EQ)
+              strip-worklet.js (compressor, de-esser, limiter)  edit.js  check.js  presets.js  pack.js  store.js
               recorder-worklet.js  studio.js  landing.js  license.js  pro.js  admin.js
 assets/img/   favicon.svg  og.png
 render.yaml   Render static-site blueprint
