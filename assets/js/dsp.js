@@ -119,8 +119,16 @@ export function detectPitch(x0, sr0, opts = {}) {
       const cm = run > 0 ? (d[tau] * tau) / run : 1;
       d[tau] = cm;
     }
-    for (let tau = minLag + 1; tau < maxLag; tau++) {
-      if (d[tau] < threshold && d[tau] <= d[tau - 1] && d[tau] <= d[tau + 1]) { best = tau; bestVal = d[tau]; break; }
+    // Every dip under the threshold is a candidate period. Take the earliest one that is nearly as deep as
+    // the deepest: a strong second harmonic makes a shallow dip at half the period, and jumping to it
+    // would throw the note up an octave.
+    let deep = threshold;
+    for (let tau = minLag + 1; tau < maxLag; tau++) if (d[tau] < deep && d[tau] <= d[tau - 1] && d[tau] <= d[tau + 1]) deep = d[tau];
+    if (deep < threshold) {
+      const ok = deep + 0.035;
+      for (let tau = minLag + 1; tau < maxLag; tau++) {
+        if (d[tau] <= ok && d[tau] <= d[tau - 1] && d[tau] <= d[tau + 1]) { best = tau; bestVal = d[tau]; break; }
+      }
     }
     if (best < 0) continue;
     // parabolic interpolation
@@ -174,13 +182,16 @@ function cleanPitchTrack(f0) {
 }
 
 // ---------------------------------------------------------------- scale snapping
-export function snapToScale(midi, root, scaleKey) {
+// mask: optional array of 12 booleans (pitch classes C..B that are allowed). Overrides the scale when given.
+export function snapToScale(midi, root, scaleKey, mask = null) {
   const scale = SCALES[scaleKey] || SCALES.chromatic;
-  let best = midi, bestDist = Infinity;
+  const ok = mask && mask.some(Boolean)
+    ? (n) => mask[((n % 12) + 12) % 12]
+    : (n) => scale.includes((((n - root) % 12) + 12) % 12);
+  let best = Math.round(midi), bestDist = Infinity;
   const base = Math.floor(midi) - 12;
   for (let n = base; n <= base + 24; n++) {
-    const pc = (((n - root) % 12) + 12) % 12;
-    if (!scale.includes(pc)) continue;
+    if (!ok(n)) continue;
     const dist = Math.abs(n - midi);
     if (dist < bestDist) { bestDist = dist; best = n; }
   }
@@ -188,34 +199,97 @@ export function snapToScale(midi, root, scaleKey) {
 }
 
 // Build the per-frame correction curve (in semitones) from a pitch track.
-// speedMs: 0 = hard/robotic, higher = more natural glide. amount: 0..1. keepVibrato: 0..1.
-export function correctionCurve(track, { root = 0, scale = 'minor', speedMs = 20, amount = 1, keepVibrato = 0.3 } = {}) {
-  const { f0, hop, sr } = track;
+//   speedMs      0 = hard/robotic, higher = more natural glide into the note
+//   amount       0..1 how much of the correction is applied
+//   keepVibrato  0..1 how much of the singer's own vibrato survives
+//   humanize     0..1 held notes get a slower retune so they keep their life; short notes stay tight
+//   flex         0..1 leave bends and slides alone when the singer is far from a note
+//   glideMs      how long the target takes to slide from one note to the next
+//   transpose    whole-take shift in semitones, detune in cents (reference pitch)
+//   mask         12 allowed pitch classes, overrides the scale
+//   edits        [{ a, b, note | off }] in seconds from the start of the take: hand-placed notes
+export function correctionCurve(track, {
+  root = 0, scale = 'minor', speedMs = 20, amount = 1, keepVibrato = 0.3,
+  humanize = 0, flex = 0, glideMs = 0, transpose = 0, detune = 0, mask = null, edits = null,
+} = {}) {
+  const { f0, hop, sr, win = 0 } = track;
   const n = f0.length;
   const detected = new Float32Array(n);
   const target = new Float32Array(n);
   const shift = new Float32Array(n);
   const frameSec = hop / sr;
-  const alpha = speedMs <= 0 ? 1 : 1 - Math.exp(-frameSec / (speedMs / 1000));
+  const det = detune / 100;
+  const flexZone = 1 - 0.7 * flex;
+  const glideA = glideMs > 0 ? 1 - Math.exp(-frameSec / (glideMs / 1000)) : 1;
+  const ed = edits && edits.length ? [...edits].sort((p, q) => p.a - q.a) : null;
+  let ei = 0;
   // slow-moving centre used to preserve vibrato around the target note
-  let centre = 0;
-  let smoothShift = 0;
-  let wasVoiced = false;
+  let centre = 0, smoothShift = 0, wasVoiced = false, note = 0, tgt = 0, held = 0;
   for (let i = 0; i < n; i++) {
     if (!f0[i]) { wasVoiced = false; shift[i] = 0; continue; }
     const m = freqToMidi(f0[i]);
     detected[i] = m;
-    if (!wasVoiced) { centre = m; }
+    if (!wasVoiced) centre = m;
     centre += (m - centre) * (1 - Math.exp(-frameSec / 0.12));
-    const note = snapToScale(centre, root, scale);
-    target[i] = note;
+
+    // nearest allowed note, with a little stickiness so a wobble between two notes doesn't flutter
+    const near = snapToScale(centre - det, root, scale, mask) + det;
+    const prev = note;
+    if (!wasVoiced || Math.abs(centre - note) > Math.abs(centre - near) + 0.3) note = near;
+
+    // hand-placed notes win over the scale
+    let off = false, forced = false;
+    if (ed) {
+      const t = (i * hop + win / 2) / sr;
+      while (ei < ed.length && ed[ei].b <= t) ei++;
+      const e = ei < ed.length && ed[ei].a <= t ? ed[ei] : null;
+      if (e) { if (e.off) off = true; else { note = e.note; forced = true; } }
+    }
+    if (!wasVoiced || note !== prev) held = 0; else held += frameSec;
+    if (!wasVoiced) tgt = note; else tgt += (note - tgt) * glideA;
+    target[i] = off ? m : note;
+
     const vibrato = (m - centre) * keepVibrato;
-    const want = (note + vibrato - m) * amount;
+    let want = off ? 0 : (tgt + vibrato - m) * amount;
+    if (flex > 0 && !forced && !off) {
+      const d = Math.abs(centre - tgt);
+      if (d > flexZone) want *= Math.max(0, 1 - (d - flexZone) / 0.25);
+    }
+    want += transpose;
+    const speed = speedMs + humanize * 140 * Math.min(1, held / 0.25);
+    const alpha = speed <= 0 ? 1 : 1 - Math.exp(-frameSec / (speed / 1000));
     smoothShift = wasVoiced ? smoothShift + (want - smoothShift) * alpha : want;
     shift[i] = smoothShift;
     wasVoiced = true;
   }
   return { detected, target, shift };
+}
+
+// Group a target curve into notes for the pitch editor: [{ i0, i1, note, sung }] (frame indexes, i1 exclusive).
+export function noteSegments(f0, target, minFrames = 8) {
+  const segs = [];
+  const n = f0.length;
+  let i = 0;
+  while (i < n) {
+    if (!f0[i]) { i++; continue; }
+    const note = Math.round(target[i]);
+    let j = i, gap = 0, last = i, sum = 0, cnt = 0;
+    while (j < n) {
+      if (!f0[j]) { if (++gap > 4) break; j++; continue; }
+      if (Math.round(target[j]) !== note) break;
+      gap = 0; last = j; sum += freqToMidi(f0[j]); cnt++; j++;
+    }
+    segs.push({ i0: i, i1: last + 1, note, sung: cnt ? sum / cnt : note });
+    i = last + 1;
+  }
+  // fold blips into their neighbour so the editor shows notes, not flicker
+  const out = [];
+  for (const s of segs) {
+    const p = out[out.length - 1];
+    if (s.i1 - s.i0 < minFrames && p && s.i0 - p.i1 <= 4) { p.i1 = s.i1; continue; }
+    out.push(s);
+  }
+  return out.filter((s) => s.i1 - s.i0 >= 3);
 }
 
 // ---------------------------------------------------------------- pitch shifter
@@ -287,12 +361,97 @@ export function pitchShiftVarying(x, sr, shiftSemis, hop, opts = {}) {
   return y;
 }
 
+// ---------------------------------------------------------------- formant-preserving pitch shifter (TD-PSOLA)
+// Moves the pitch of a sung voice without moving its formants, so a corrected or transposed note still
+// sounds like the same throat. One pitch period is lifted out at a time and laid back down closer
+// together (higher) or further apart (lower). Unvoiced sound (breaths, S, T) passes through untouched.
+//   shift      per-frame shift in semitones, same frames as track.f0
+//   formant    semitones to move the formants on their own (voice character), 0 = natural
+export function psolaShift(x, sr, track, shift, { formant = 0 } = {}) {
+  const { f0, hop, win } = track;
+  const len = x.length, frames = f0.length;
+  if (!frames) return x.slice();
+  const fr = Math.pow(2, formant / 12);
+  const frameOf = (pos) => (pos - win / 2) / hop;
+  const f0At = (pos) => {
+    const f = frameOf(pos);
+    const i = Math.max(0, Math.min(frames - 1, Math.floor(f)));
+    const j = Math.min(frames - 1, i + 1);
+    const a = f0[i], b = f0[j];
+    if (a && b) return a + (b - a) * Math.max(0, Math.min(1, f - i));
+    return f - i < 0.5 ? a : b;
+  };
+  const shiftAt = (pos) => {
+    const f = frameOf(pos);
+    const i = Math.max(0, Math.min(frames - 1, Math.floor(f)));
+    const j = Math.min(frames - 1, i + 1);
+    return shift[i] + (shift[j] - shift[i]) * Math.max(0, Math.min(1, f - i));
+  };
+  // a darker copy to find each pitch pulse on
+  const lpc = biquadCoeffs('lowpass', Math.min(1100, sr * 0.2), sr, 0.7071);
+  const xl = biquad(x, lpc);
+
+  // analysis marks: one per pitch period on voiced sound, every 5 ms elsewhere
+  const unv = Math.round(sr * 0.005);
+  const mPos = [], mT = [];
+  let pos = 0, prevVoiced = false;
+  while (pos < len) {
+    const f = f0At(pos);
+    if (!(f > 0)) { mPos.push(pos); mT.push(0); pos += unv; prevVoiced = false; continue; }
+    const T = sr / f;
+    const r = (prevVoiced ? 0.3 : 0.5) * T;
+    let best = Math.round(pos), bv = -Infinity;
+    const lo = Math.max(0, Math.round(pos - r)), hi = Math.min(len - 1, Math.round(pos + r));
+    for (let k = lo; k <= hi; k++) if (xl[k] > bv) { bv = xl[k]; best = k; }
+    mPos.push(best); mT.push(T);
+    pos = best + T; prevVoiced = true;
+  }
+
+  const out = new Float32Array(len + 4096);
+  const norm = new Float32Array(len + 4096);
+  const M = mPos.length;
+  let ts = 0, idx = 0, wasV = false;
+  while (ts < len) {
+    while (idx + 1 < M && Math.abs(mPos[idx + 1] - ts) <= Math.abs(mPos[idx] - ts)) idx++;
+    const T = mT[idx];
+    if (!T) {
+      // unvoiced: copy straight across
+      const c = Math.round(ts);
+      for (let j = -unv; j <= unv; j++) {
+        const o = c + j; if (o < 0 || o >= len) continue;
+        const w = 0.5 + 0.5 * Math.cos((Math.PI * j) / unv);
+        out[o] += x[o] * w; norm[o] += w;
+      }
+      ts += unv; wasV = false;
+      continue;
+    }
+    // start each sung phrase exactly on a pitch pulse, so an untouched note comes out untouched
+    if (!wasV && Math.abs(mPos[idx] - ts) < T) ts = mPos[idx];
+    wasV = true;
+    const ratio = Math.pow(2, shiftAt(ts) / 12);
+    const half = Math.max(8, Math.round(T / fr));
+    const c = Math.round(ts), src = mPos[idx] + (ts - c);
+    for (let j = -half; j <= half; j++) {
+      const o = c + j; if (o < 0 || o >= out.length) continue;
+      const p = src + j * fr;
+      if (p < 0 || p >= len - 1) continue;
+      const i = p | 0, v = x[i] + (x[i + 1] - x[i]) * (p - i);
+      const w = 0.5 + 0.5 * Math.cos((Math.PI * j) / half);
+      out[o] += v * w; norm[o] += w;
+    }
+    const period = idx + 1 < M && mT[idx + 1] ? mPos[idx + 1] - mPos[idx] : T;
+    ts += Math.max(16, period / ratio);
+  }
+  const y = new Float32Array(len);
+  for (let i = 0; i < len; i++) y[i] = norm[i] > 0.05 ? out[i] / norm[i] : x[i];
+  return y;
+}
+
 // One call: analyse + correct. Returns { audio, track, curve }.
-export function autotune(x, sr, settings) {
+export function autotune(x, sr, settings = {}) {
   const track = detectPitch(x, sr);
   const curve = correctionCurve(track, settings);
-  // stretch curve so it is indexed by input-sample hop from sample 0
-  const audio = pitchShiftVarying(x, sr, alignCurve(curve.shift, track), track.hop);
+  const audio = psolaShift(x, sr, track, curve.shift, { formant: settings.formant || 0 });
   return { audio, track, curve };
 }
 
@@ -335,9 +494,11 @@ export function harmonize(x, sr, settings, mode) {
       const s = curve.shift[i] + (want - lead);
       last += (s - last) * 0.5; // settle between notes instead of jumping
     }
-    shift[i] = last; // breaths and consonants ride along at the last interval
+    shift[i] = last;
   }
-  return pitchShiftVarying(x, sr, alignCurve(shift, track), track.hop);
+  // a touch of formant movement keeps the harmony from sounding like a clone of the lead
+  const up = (h.semis ?? h.steps) > 0;
+  return psolaShift(x, sr, track, shift, { formant: h.semis ? 0 : up ? 0.6 : -0.6 });
 }
 
 // Two extra voices from one take: a hair sharp and a hair flat, a few ms late, for a wide double.

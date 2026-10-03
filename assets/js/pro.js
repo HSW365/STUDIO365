@@ -249,7 +249,7 @@ export function openPro(feature) {
   const $ = (id) => dlg.querySelector('#' + id);
   forceBuy = false;
   $('proTitle').textContent = feature ? `${feature} is a Pro feature` : 'Go Pro';
-  $('proLede').textContent = `Vocal stacks and harmonies, pro presets, the A&R365 record check, release packs and session backups. $${FIRST === PRICE ? PRICE : FIRST + ' your first month, then $' + PRICE} a month, paid with Cash App.`;
+  $('proLede').textContent = `Tune Pro with the note-by-note pitch editor, vocal stacks and harmonies, pro presets, the A&R365 record check, release packs and session backups. $${FIRST === PRICE ? PRICE : FIRST + ' your first month, then $' + PRICE} a month, paid with Cash App.`;
   $('proMsg').className = 'pro-msg';
   $('proMsg').textContent = 'Your key is emailed once the payment shows up. No auto-billing, ever. Renew when you want.';
   $('proKeyMsg').textContent = '';
