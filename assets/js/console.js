@@ -1,7 +1,7 @@
 // The mixing board: channel strips with faders, pan, mute, solo and live meters, plus the channel EQ editor.
 // This file only draws and listens; the sound itself is built in mixer.js.
 
-const CHANNELS = [
+export const CHANNELS = [
   { id: 'vocal', name: 'Vocal', sub: 'Lead', fader: 'vocalDb', min: -24, max: 12, def: 0, pan: 'pan', solo: true, gr: 'comp', tone: 'violet' },
   { id: 'stack', name: 'Stack', sub: 'Doubles + harmony', fader: 'stackDb', min: -24, max: 12, def: 0, solo: true, tone: 'violet' },
   { id: 'beat', name: 'Beat', sub: 'Instrumental', fader: 'beatDb', min: -24, max: 6, def: -3, pan: 'beatPan', solo: true, tone: 'cyan' },
@@ -63,7 +63,10 @@ export function initConsole(opts) {
   api = opts;
   const root = opts.root;
   root.textContent = '';
-  for (const ch of CHANNELS) {
+  strips.clear();
+  const level = (ch) => (ch.get ? ch.get() : api.mix()[ch.fader]);
+  const panOf = (ch) => (ch.panGet ? ch.panGet() : api.mix()[ch.pan]);
+  for (const ch of (opts.channels ? opts.channels() : CHANNELS)) {
     const s = el('div', `strip tone-${ch.tone}${ch.master ? ' strip-master' : ''}`);
     s.dataset.ch = ch.id;
     const name = el('button', 'strip-name'); name.type = 'button';
@@ -73,16 +76,17 @@ export function initConsole(opts) {
 
     const panBox = el('div', 'strip-pan');
     let paintPan = null;
-    if (ch.pan) {
+    if (ch.pan || ch.panGet) {
       const knob = el('div', 'knob'); knob.append(el('i'));
       const out = el('output', null, 'C');
       paintPan = control(knob, {
         min: -100, max: 100, step: 1, def: 0, throwPx: 160, label: `${ch.name} pan`, text: fmtPan,
-        get: () => api.mix()[ch.pan], set: (v) => { api.set(ch.pan, v); out.textContent = fmtPan(v); },
+        get: () => panOf(ch), set: (v) => { ch.panSet ? ch.panSet(v) : api.set(ch.pan, v); out.textContent = fmtPan(v); },
       });
-      const p0 = paintPan; paintPan = () => { p0(); out.textContent = fmtPan(api.mix()[ch.pan]); };
+      const p0 = paintPan; paintPan = () => { p0(); out.textContent = fmtPan(panOf(ch)); };
       panBox.append(knob, out);
     } else panBox.append(el('span', 'strip-pan-none', ch.master ? 'Stereo' : ch.id === 'stack' ? 'Bus' : 'FX'));
+    if (ch.track) s.classList.add('strip-track');
 
     const body = el('div', 'strip-body');
     const scale = el('div', 'strip-scale');
@@ -96,7 +100,7 @@ export function initConsole(opts) {
     const val = el('output', 'strip-val', '0.0 dB');
     const paintFader = control(fader, {
       min: ch.min, max: ch.max, step: 0.5, def: ch.def, label: `${ch.name} level`, text: fmtDb,
-      get: () => api.mix()[ch.fader], set: (v) => { api.set(ch.fader, v); val.textContent = fmtDb(v); },
+      get: () => level(ch), set: (v) => { ch.set ? ch.set(v) : api.set(ch.fader, v); val.textContent = fmtDb(v); },
     });
 
     const btns = el('div', 'strip-btns');
@@ -126,10 +130,10 @@ export function initConsole(opts) {
 export function syncConsole() {
   if (!api) return;
   const m = api.mix();
-  const anySolo = m.solo.vocal || m.solo.stack || m.solo.beat;
+  const anySolo = Object.keys(m.solo).some((k) => m.solo[k]);
   for (const s of strips.values()) {
     s.paintFader(); if (s.paintPan) s.paintPan();
-    s.val.textContent = fmtDb(m[s.ch.fader]);
+    s.val.textContent = fmtDb(s.ch.get ? s.ch.get() : m[s.ch.fader]);
     if (s.mute) { s.mute.classList.toggle('on', !!m.mute[s.ch.id]); s.mute.setAttribute('aria-pressed', String(!!m.mute[s.ch.id])); }
     if (s.solo) { s.solo.classList.toggle('on', !!m.solo[s.ch.id]); s.solo.setAttribute('aria-pressed', String(!!m.solo[s.ch.id])); }
     const silent = !s.ch.master && (m.mute[s.ch.id] || (s.ch.solo && anySolo && !m.solo[s.ch.id]));
@@ -155,7 +159,7 @@ function paintMeters(force = false) {
   const red = G ? G.reduction() : null;
   let alive = false;
   for (const s of strips.values()) {
-    const ids = s.ch.stereo ? ['masterL', 'masterR'] : [s.ch.id];
+    const ids = s.ch.stereo ? ['masterL', 'masterR'] : [s.ch.meter || s.ch.id];
     ids.forEach((id, k) => {
       const v = G && playing ? levelOf(G.meters[id]) : METER_MIN;
       s.lv[k] = v > s.lv[k] ? v : Math.max(METER_MIN, s.lv[k] - 1.1);
@@ -348,3 +352,6 @@ export function drawEq(specAnalyser = null) {
   }
   g.lineWidth = 1;
 }
+
+// Rebuild the strips after a track is added, renamed or removed.
+export function rebuildConsole() { if (api) { const sel = [...strips.values()].find((x) => x.el.classList.contains('selected')); initConsole(api); if (sel) selectStrip(sel.ch.id); } }

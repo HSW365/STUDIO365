@@ -89,54 +89,60 @@
         </div>
       </div>
 
-      <div class="lanes">
-        <div class="lane-labels">
-          <div class="lane-label"><b>Beat</b><span id="beatName">No beat loaded</span></div>
-          <div class="lane-label"><b>Vocal</b><span id="vocalName">No take yet</span></div>
+      <div class="toolbar" role="toolbar" aria-label="Editing tools">
+        <div class="tb-group tools" role="group" aria-label="Tool">
+          <button type="button" class="tb tool" data-tool="arrow" aria-pressed="false" title="Pick a clip, drag it in time or to another track (1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l13 9-6 1.5L9.5 20z" fill="currentColor" stroke="none"/></svg><span>Arrow</span><kbd>1</kbd></button>
+          <button type="button" class="tb tool" data-tool="range" aria-pressed="false" title="Drag across a clip to select part of it (2)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h3m2 0h3M8 20h3m2 0h3M12 4v16"/><path d="M4 9v6M20 9v6" opacity=".55"/></svg><span>Range</span><kbd>2</kbd></button>
+          <button type="button" class="tb tool" data-tool="split" aria-pressed="false" title="Click a clip to cut it in two (3)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20" stroke-dasharray="3 2.5"/><path d="M3 8l5 4-5 4zM21 8l-5 4 5 4z" fill="currentColor" stroke="none"/></svg><span>Split</span><kbd>3</kbd></button>
+          <button type="button" class="tb tool" data-tool="erase" aria-pressed="false" title="Click a clip to take it off the track (4)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l6 6-9 9H7l-4-4z"/><path d="M9.5 9.5l6 6M5 20h15"/></svg><span>Eraser</span><kbd>4</kbd></button>
+          <button type="button" class="tb tool" data-tool="zoom" aria-pressed="false" title="Click to zoom in, Alt-click to zoom out (5)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 8v5M8 10.5h5"/></svg><span>Zoom</span><kbd>5</kbd></button>
         </div>
-        <div class="timeline" id="timeline">
-          <canvas id="timelineCanvas" aria-label="Timeline. Click to move the playhead."></canvas>
+        <div class="tb-group" role="group" aria-label="Clipboard">
+          <button type="button" class="tb" data-edit="remove" title="Cut the selected part out and close the gap" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6.5" r="2.8"/><circle cx="6" cy="17.5" r="2.8"/><path d="M8.3 8.3L21 19M8.3 15.7L21 5"/></svg><span>Cut</span></button>
+          <button type="button" class="tb" data-edit="copy" title="Copy the clip or the selected part (Ctrl+C)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5v-3a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></svg><span>Copy</span></button>
+          <button type="button" class="tb" data-edit="paste" title="Paste at the playhead on the armed track (Ctrl+V)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 5V3.5h6V5M9 11h6M9 15h4"/></svg><span>Paste</span></button>
+          <button type="button" class="tb" data-edit="dup" title="Repeat the clip right after itself (D)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="8" height="10" rx="1.5"/><rect x="13" y="7" width="8" height="10" rx="1.5" stroke-dasharray="2.5 2"/></svg><span>Duplicate</span></button>
+        </div>
+        <div class="tb-group" role="group" aria-label="Shape">
+          <button type="button" class="tb" data-edit="trim" title="Keep only the selected part" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v15h15M2 7h15v15"/></svg><span>Crop</span></button>
+          <button type="button" class="tb" data-edit="silence" title="Silence the selected part and leave the timing alone (Delete)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5l5 4v-13l-5 4z"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg><span>Mute part</span></button>
+          <button type="button" class="tb" data-edit="fadeIn" title="Fade in across the selected part" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19L21 5v14z" fill="currentColor" fill-opacity=".25"/></svg><span>Fade in</span></button>
+          <button type="button" class="tb" data-edit="fadeOut" title="Fade out across the selected part" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 19L3 5v14z" fill="currentColor" fill-opacity=".25"/></svg><span>Fade out</span></button>
+        </div>
+        <div class="tb-group" role="group" aria-label="Level">
+          <button type="button" class="tb" data-edit="down" title="Turn the clip or the selected part down 1 dB" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5l5 4v-13l-5 4zM16 12h6"/></svg><span>-1 dB</span></button>
+          <button type="button" class="tb" data-edit="up" title="Turn the clip or the selected part up 1 dB" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5l5 4v-13l-5 4zM16 12h6M19 9v6"/></svg><span>+1 dB</span></button>
+          <button type="button" class="tb" data-edit="normalize" title="Bring the loudest peak to -3 dB" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18" opacity=".55"/><path d="M6 20V9M10.5 20V5M15 20v-9M19.5 20V7"/></svg><span>Normalize</span></button>
+          <button type="button" class="tb" data-edit="reverse" title="Play the clip or the selected part backwards" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7H7M11 3L7 7l4 4M4 17h13M13 13l4 4-4 4"/></svg><span>Reverse</span></button>
+        </div>
+        <div class="tb-group" role="group" aria-label="Transport helpers">
+          <button type="button" class="tb" id="btnLoop" aria-pressed="false" title="Play the selection round and round (L)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3l3.5 3.5L17 10"/><path d="M20.5 6.5H8a4.5 4.5 0 0 0-4.5 4.5v1M7 21l-3.5-3.5L7 14"/><path d="M3.5 17.5H16a4.5 4.5 0 0 0 4.5-4.5v-1"/></svg><span>Loop</span></button>
+          <button type="button" class="tb" id="btnSnap" aria-pressed="false" title="Lock moves and cuts to the beat grid"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v9a7 7 0 0 0 14 0V3h-4.5v9a2.5 2.5 0 0 1-5 0V3z"/><path d="M5 7h4.5M14.5 7H19"/></svg><span>Snap</span></button>
+        </div>
+        <div class="tb-group" role="group" aria-label="History">
+          <button type="button" class="tb" id="btnUndo" title="Undo (Ctrl+Z)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5L3 10l5 5"/><path d="M3 10h11a6 6 0 0 1 0 12h-3"/></svg><span>Undo</span></button>
+          <button type="button" class="tb" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5l5 5-5 5"/><path d="M21 10H10a6 6 0 0 0 0 12h3"/></svg><span>Redo</span></button>
+        </div>
+        <div class="tb-group tb-zoom">
+          <button type="button" class="tb mini" id="zoomOut" title="Zoom out (-)" aria-label="Zoom out">&minus;</button>
+          <output id="zoomOutLabel">Fit</output>
+          <button type="button" class="tb mini" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">+</button>
+        </div>
+      </div>
+
+      <div class="lanes">
+        <div class="lane-labels" id="laneLabels"></div>
+        <div class="timeline" id="timeline" data-tool="arrow">
+          <canvas id="timelineCanvas" aria-label="Timeline. Beat on top, one lane per vocal track."></canvas>
           <div class="drop-hint" id="dropHint">
             <p class="drop-title">Drop your beat here</p>
             <p>MP3, WAV, M4A or FLAC. Or <button type="button" class="link" id="btnPickBeat">choose a file</button>, or just hit Record to go a cappella.</p>
           </div>
         </div>
-      </div>
-
-      <div class="editbar" role="toolbar" aria-label="Editing tools">
-        <div class="eb-group seg" role="group" aria-label="Pointer tool">
-          <button type="button" id="toolSelect" aria-pressed="true" title="Drag across the vocal to select a part of it">Select</button>
-          <button type="button" id="toolMove" aria-pressed="false" title="Drag the vocal left or right to move it against the beat">Move</button>
+        <div class="lanes-foot">
+          <button class="btn ghost small" type="button" id="btnAddTrack">+ Add vocal track</button>
+          <p class="tb-hint" id="selReadout" aria-live="polite"></p>
         </div>
-        <div class="eb-group">
-          <button type="button" class="eb" data-edit="trim" title="Keep only the selection" disabled>Trim</button>
-          <button type="button" class="eb" data-edit="remove" title="Cut the selection out and close the gap" disabled>Cut out</button>
-          <button type="button" class="eb" data-edit="silence" title="Mute the selection and leave the timing alone" disabled>Silence</button>
-        </div>
-        <div class="eb-group">
-          <button type="button" class="eb" data-edit="fadeIn" title="Fade in across the selection" disabled>Fade in</button>
-          <button type="button" class="eb" data-edit="fadeOut" title="Fade out across the selection" disabled>Fade out</button>
-        </div>
-        <div class="eb-group">
-          <button type="button" class="eb" data-edit="down" title="Turn the selection (or the whole take) down 1 dB" disabled>&minus;1 dB</button>
-          <button type="button" class="eb" data-edit="up" title="Turn the selection (or the whole take) up 1 dB" disabled>+1 dB</button>
-          <button type="button" class="eb" data-edit="normalize" title="Bring the loudest peak to -3 dB" disabled>Normalize</button>
-          <button type="button" class="eb" data-edit="reverse" title="Play the selection (or the whole take) backwards" disabled>Reverse</button>
-        </div>
-        <div class="eb-group">
-          <button type="button" class="eb" data-edit="copy" title="Make a new take from the selection, for ad-libs and stacks" disabled>To new take</button>
-          <button type="button" class="eb" id="btnLoop" aria-pressed="false" title="Play the selection round and round (L)" disabled>Loop</button>
-        </div>
-        <div class="eb-group">
-          <button type="button" class="eb" id="btnUndo" title="Undo (Ctrl+Z)" disabled>Undo</button>
-          <button type="button" class="eb" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
-        </div>
-        <div class="eb-group eb-zoom">
-          <button type="button" class="eb" id="zoomOut" title="Zoom out" aria-label="Zoom out">&minus;</button>
-          <output id="zoomOutLabel">Fit</output>
-          <button type="button" class="eb" id="zoomIn" title="Zoom in" aria-label="Zoom in">+</button>
-        </div>
-        <p class="eb-sel" id="selReadout" aria-live="polite">Drag across the vocal to select.</p>
       </div>
 
       <div class="pitch-panel" id="pitchPanel" hidden>
@@ -156,7 +162,7 @@
       <section class="console" aria-label="Mixing console">
         <div class="panel-head">
           <h2>Console</h2>
-          <p class="legend">Faders, pan, mute and solo answer while it plays. Click a channel name to open its EQ and dynamics.</p>
+          <p class="legend">Faders, pan, mute and solo answer while it plays. Every vocal track you add gets its own channel.</p>
         </div>
         <div class="strips" id="strips"></div>
       </section>
@@ -170,7 +176,7 @@
           </div>
         </div>
         <ol class="take-list" id="takeList"></ol>
-        <p class="empty" id="takesEmpty">Your takes land here. Record as many as you want and pick the best one.</p>
+        <p class="empty" id="takesEmpty">Everything you record lands here. Choose which track each take plays on, or leave it out of the mix.</p>
       </div>
     </section>
 
@@ -327,9 +333,7 @@
         <h3>Harmony</h3>
         <label class="field"><span>Harmony voice</span><select id="harmonySelect"></select></label>
         <div class="fader" data-key="harmonyLevel" data-group="stack"><div class="fader-head"><label for="f-harmonyLevel">Harmony level</label><output></output></div><input id="f-harmonyLevel" type="range" min="0" max="100" step="1"></div>
-        <h3>Your other takes</h3>
-        <p class="note" id="stackTakesNote">Record a second take of the same part, then stack it under the lead as a real double or an ad-lib.</p>
-        <ul class="stack-takes" id="stackTakes"></ul>
+        <p class="note">Singing your own doubles or ad-libs? Press <b>+ Add vocal track</b> under the timeline, arm it, and record. Every track gets its own fader on the console.</p>
       </section>
 
       <section class="tab-panel" id="panel-master" role="tabpanel" aria-labelledby="tab-master" hidden>

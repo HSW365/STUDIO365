@@ -76,6 +76,14 @@ export function normalize(x, a, b, sr, targetDb = -3) {
   return { audio: gain(x, a, b, db, sr), db };
 }
 
+// Cut a take in two at sample `a`. A couple of ms of fade on each side of the cut.
+export function split(x, a, sr) {
+  a = Math.max(1, Math.min(x.length - 1, Math.round(a)));
+  const left = x.slice(0, a), right = x.slice(a), r = Math.min(ramp(sr, 3), left.length, right.length);
+  for (let i = 0; i < r; i++) { const g = i / r; left[left.length - 1 - i] *= g; right[i] *= g; }
+  return [left, right];
+}
+
 export function reverse(x, a, b) {
   [a, b] = clampRange(x, a, b);
   const y = x.slice();

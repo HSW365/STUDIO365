@@ -109,9 +109,9 @@ export function packSession(P) {
     v: 1, app: 'STUDIO365', saved: Date.now(),
     project: {
       id: P.id, name: P.name, created: P.created, updated: P.updated, sr: P.sr, bpm: P.bpm, key: P.key,
-      activeTake: P.activeTake, tune: P.tune, mix: P.mix, master: P.master, stack: P.stack, preset: P.preset || '', release: P.release || null,
+      activeTake: P.activeTake, tracks: P.tracks, armed: P.armed, tune: P.tune, mix: P.mix, master: P.master, stack: P.stack, preset: P.preset || '', release: P.release || null,
       beat: P.beat ? { id: P.beat.id, name: P.beat.name, channels: P.beat.channels.map(ref) } : null,
-      takes: P.takes.map((t) => ({ id: t.id, num: t.num, name: t.name, start: t.start, created: t.created, audio: ref(t.audio) })),
+      takes: P.takes.map((t) => ({ id: t.id, num: t.num, name: t.name, start: t.start, created: t.created, rev: t.rev || 0, audio: ref(t.audio) })),
     },
   };
   const json = new TextEncoder().encode(JSON.stringify(head));

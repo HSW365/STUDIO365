@@ -49,19 +49,20 @@ export function compFromMacro(c) {
 }
 
 // Bring a mix saved by an older version (or a preset) up to the full console.
-export function migrateMix(mix = {}) {
+export function migrateMix(mix = {}, keepSolo = false) {
   const m = { ...DEFAULT_MIX, ...mix };
   if (mix.compThr == null && mix.comp != null) Object.assign(m, compFromMacro(mix.comp));
   m.mute = { ...DEFAULT_MIX.mute, ...(mix.mute || {}) };
-  m.solo = { ...DEFAULT_MIX.solo };
+  m.solo = keepSolo ? { ...DEFAULT_MIX.solo, ...(mix.solo || {}) } : { ...DEFAULT_MIX.solo };
   return m;
 }
 
 // Is this channel audible given the mutes and solos?
 export function audible(m, ch) {
   if (m.mute && m.mute[ch]) return false;
+  if (ch === 'rev' || ch === 'delay') return true;       // the returns follow whatever feeds them
   const s = m.solo || {};
-  if (ch in DEFAULT_MIX.solo && (s.vocal || s.stack || s.beat)) return !!s[ch];
+  if (Object.keys(s).some((k) => s[k])) return !!s[ch];
   return true;
 }
 
@@ -229,6 +230,11 @@ export async function createGraph(ctx, { live = false } = {}) {
   const layerNodes = [];
   let layerHp = 140, layerAir = 0;
 
+  // ---- extra vocal tracks (ad-libs, doubles you sang yourself): each one its own channel
+  const tracksRev = gain();
+  tracksRev.connect(revIn);
+  const trackNodes = new Map();
+
   // ---- beat channel
   const beat = gain();
   const bLow = biq('lowshelf', 110), bMid = biq('peaking', 2800, 0.8), bHigh = biq('highshelf', 8000);
@@ -270,8 +276,28 @@ export async function createGraph(ctx, { live = false } = {}) {
     },
     clearLayers() { for (const l of layerNodes) { try { l.p.disconnect(); } catch { /* gone */ } } layerNodes.length = 0; },
 
+    // The channel for one extra vocal track. Made on first use, kept for the life of the graph.
+    track(id) {
+      let t = trackNodes.get(id);
+      if (t) return t;
+      const input = gain();
+      const h = biq('highpass', layerHp);
+      const air = biq('highshelf', 9000, 0.707, layerAir);
+      const c = ctx.createDynamicsCompressor();
+      c.threshold.value = -24; c.ratio.value = 4; c.attack.value = 0.005; c.release.value = 0.14; c.knee.value = 8;
+      const level = gain(0);
+      const p = ctx.createStereoPanner();
+      const out = gain();
+      input.connect(h).connect(air).connect(c).connect(level).connect(p).connect(out).connect(bus);
+      out.connect(tracksRev);
+      t = { input, h, air, level, p, out };
+      if (live) { const a = ctx.createAnalyser(); a.fftSize = 1024; out.connect(a); meters[`t:${id}`] = a; }
+      trackNodes.set(id, t);
+      return t;
+    },
+
     // Push every setting onto the graph. Safe to call on every fader move.
-    update(mix, bpm = 90) {
+    update(mix, bpm = 90, tracks = []) {
       const m = mix;
       const on = (ch) => (audible(m, ch) ? 1 : 0);
       // vocal
@@ -294,6 +320,15 @@ export async function createGraph(ctx, { live = false } = {}) {
       put(stackRev.gain, Math.pow(Math.max(m.reverb, 14) / 100, 1.5) * 1.1);
       layerHp = Math.max(140, m.hpf); layerAir = Math.max(0, m.air);
       for (const l of layerNodes) { put(l.h.frequency, layerHp); put(l.air.gain, layerAir); }
+      // extra vocal tracks
+      put(tracksRev.gain, Math.pow(Math.max(m.reverb, 10) / 100, 1.5) * 0.9);
+      const seen = new Set();
+      for (const tr of tracks) {
+        const t = G.track(tr.id); seen.add(tr.id);
+        put(t.h.frequency, Math.max(110, m.hpf)); put(t.air.gain, Math.max(0, m.air));
+        put(t.level.gain, dbToGain(tr.db ?? -4) * on(tr.id)); put(t.p.pan, Math.max(-1, Math.min(1, (tr.pan || 0) / 100)));
+      }
+      for (const [id, t] of trackNodes) if (!seen.has(id)) put(t.level.gain, 0);
       // beat
       put(bLow.gain, m.beatLow); put(bMid.gain, m.beatMid); put(bHigh.gain, m.beatHigh);
       put(bFader.gain, dbToGain(m.beatDb) * on('beat')); put(bPan.pan, m.beatPan / 100);
@@ -332,18 +367,21 @@ export async function createGraph(ctx, { live = false } = {}) {
 // ---------------------------------------------------------------- offline bounce
 // beat: stereo Float32Array[] | null, vocal: Float32Array | null (the lead)
 // layers: extra voices stacked behind the lead: [{ audio: Float32Array, offsetMs, db, pan (-100..100) }]
-export async function renderMix({ sr, beat, vocal, mix, bpm = 90, vocalOnly = false, layers = [] }) {
-  const m = migrateMix(mix);
+// vocals: the lead track's clips [{ audio, offsetMs }]. tracks: [{ id, db, pan, clips: [{ audio, offsetMs }] }].
+// `vocal` (one lead clip, offset in mix.vocalOffsetMs) is still accepted.
+export async function renderMix({ sr, beat, vocal, vocals = null, mix, bpm = 90, vocalOnly = false, layers = [], tracks = [] }) {
+  const m = migrateMix(mix, true);
+  const lead = vocals || (vocal ? [{ audio: vocal, offsetMs: m.vocalOffsetMs || 0 }] : []);
   if (vocalOnly) { m.solo = { ...DEFAULT_MIX.solo }; m.mute = { ...m.mute, vocal: false, stack: false }; }
-  const offset = (m.vocalOffsetMs || 0) / 1000;
   const beatLen = beat && !vocalOnly ? beat[0].length : 0;
-  let vocLen = vocal ? vocal.length + Math.max(0, Math.round(offset * sr)) : 0;
-  for (const l of layers) vocLen = Math.max(vocLen, l.audio.length + Math.max(0, Math.round((l.offsetMs || 0) / 1000 * sr)));
-  const tail = vocal || layers.length ? Math.round(sr * Math.max(2.5, m.revDecay + 0.5)) : 0;
+  const every = [...lead, ...layers, ...tracks.flatMap((t) => t.clips)];
+  let vocLen = 0;
+  for (const l of every) vocLen = Math.max(vocLen, l.audio.length + Math.max(0, Math.round((l.offsetMs || 0) / 1000 * sr)));
+  const tail = every.length ? Math.round(sr * Math.max(2.5, m.revDecay + 0.5)) : 0;
   const length = Math.max(beatLen, vocLen + tail, sr);
   const ctx = new OfflineAudioContext(2, length, sr);
   const G = await createGraph(ctx);
-  G.update(m, bpm);
+  G.update(m, bpm, tracks);
   const startAt = (src, len, off) => { if (off >= 0) src.start(off); else src.start(0, Math.min(-off, len / sr)); };
 
   if (beat && !vocalOnly) {
@@ -359,14 +397,16 @@ export async function renderMix({ sr, beat, vocal, mix, bpm = 90, vocalOnly = fa
     src.connect(G.addLayer({ db: l.db ?? -8, pan: l.pan || 0 }));
     startAt(src, l.audio.length, (l.offsetMs || 0) / 1000);
   }
-  G.update(m, bpm);
-  if (vocal) {
-    const vb = ctx.createBuffer(1, vocal.length, sr);
-    vb.copyToChannel(vocal, 0);
-    const src = ctx.createBufferSource(); src.buffer = vb;
-    src.connect(G.inputs.lead);
-    startAt(src, vocal.length, offset);
-  }
+  const play = (clip, dest) => {
+    const b = ctx.createBuffer(1, clip.audio.length, sr);
+    b.copyToChannel(clip.audio, 0);
+    const src = ctx.createBufferSource(); src.buffer = b;
+    src.connect(dest);
+    startAt(src, clip.audio.length, (clip.offsetMs || 0) / 1000);
+  };
+  for (const tr of tracks) for (const c of tr.clips) play(c, G.track(tr.id).input);
+  G.update(m, bpm, tracks);
+  for (const c of lead) play(c, G.inputs.lead);
   const rendered = await ctx.startRendering();
   return [rendered.getChannelData(0).slice(), rendered.getChannelData(1).slice()];
 }
