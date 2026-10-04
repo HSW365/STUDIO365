@@ -15,6 +15,7 @@ A full vocal studio that runs in the browser: record over a beat, pitch-correct 
 ### Studio features (all working, all client-side)
 
 - **Record** over a beat with sample-accurate AudioWorklet capture, count-in, click track, mic monitoring, input meter, latency compensation, punch-in from the playhead. Unlimited takes.
+- **Beat maker**: writes and synthesizes an original beat (trap, drill, boom bap, R&B, melodic) in a chosen key, tempo and length. With a beat loaded it starts from that beat's key and tempo so an existing vocal still fits. It generates new drums, bass, chords and melody; it does not copy another recording's notes.
 - **Import** beats and vocal files (MP3, WAV, M4A, FLAC, OGG); drag and drop onto the timeline.
 - **Key and tempo detection** from the beat (chroma + Krumhansl profiles, onset autocorrelation).
 - **Pitch correction**: YIN pitch tracking with octave-error repair, scale snapping (major, minor, harmonic minor, pentatonics, chromatic), retune speed, strength, vibrato keep. The shifter is formant-preserving TD-PSOLA, so a corrected or transposed note keeps the singer's tone. Runs in a Web Worker.

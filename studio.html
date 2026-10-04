@@ -136,7 +136,7 @@
           <canvas id="timelineCanvas" aria-label="Timeline. Beat on top, one lane per vocal track."></canvas>
           <div class="drop-hint" id="dropHint">
             <p class="drop-title">Drop your beat here</p>
-            <p>MP3, WAV, M4A or FLAC. Or <button type="button" class="link" id="btnPickBeat">choose a file</button>, or just hit Record to go a cappella.</p>
+            <p>MP3, WAV, M4A or FLAC. Or <button type="button" class="link" id="btnPickBeat">choose a file</button>, <button type="button" class="link" id="btnMakeBeatHint">make a new beat</button>, or just hit Record to go a cappella.</p>
           </div>
         </div>
         <div class="lanes-foot">
@@ -173,6 +173,7 @@
           <div class="head-actions">
             <button class="btn ghost small" type="button" id="btnImportVocal">Import vocal file</button>
             <button class="btn ghost small" type="button" id="btnReplaceBeat">Replace beat</button>
+            <button class="btn ghost small" type="button" id="btnMakeBeat">Make a beat</button>
           </div>
         </div>
         <ol class="take-list" id="takeList"></ol>
@@ -378,6 +379,29 @@
     </div>
     <p class="note warn export-note" id="exportNote" hidden></p>
     <div class="export-progress" id="exportProgress" hidden><div class="bar"><i id="exportBar"></i></div><p id="exportMsg">Rendering</p></div>
+  </dialog>
+
+  <dialog id="beatDialog" class="sheet wide">
+    <form method="dialog" class="sheet-head"><h2>Make a beat</h2><button class="icon-btn" aria-label="Close" value="close">✕</button></form>
+    <div class="beat-form">
+      <p class="note" id="beatIntro">A brand new beat, written and played from scratch in the key and tempo you pick. It is yours to release.</p>
+      <label class="field"><span>Style</span><select id="beatStyle"></select></label>
+      <p class="note" id="beatStyleAbout"></p>
+      <div class="field-row two">
+        <label class="field"><span>Key</span><select id="beatRoot"></select></label>
+        <label class="field"><span>Scale</span><select id="beatScale"><option value="minor">Minor</option><option value="major">Major</option></select></label>
+      </div>
+      <div class="field-row two">
+        <label class="field"><span>Tempo (BPM)</span><input id="beatBpm" type="number" min="60" max="200" step="1" inputmode="numeric"></label>
+        <label class="field"><span>Length</span><select id="beatLength"></select></label>
+      </div>
+      <div class="beat-actions">
+        <button class="btn primary" type="button" id="beatGo">Make the beat</button>
+        <button class="btn ghost" type="button" id="beatPreview" hidden>Play it</button>
+        <button class="btn pro" type="button" id="beatUse" hidden>Use this beat</button>
+      </div>
+      <p class="note" id="beatMsg" role="status" aria-live="polite"></p>
+    </div>
   </dialog>
 
   <dialog id="checkDialog" class="sheet wide">

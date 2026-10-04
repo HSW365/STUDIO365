@@ -9,6 +9,7 @@ import { initPro, isPro, isMember, planName, requirePro, openPro, FREE_PROJECTS 
 import { PRESETS } from './presets.js';
 import * as Pack from './pack.js';
 import { runJob } from './dsp-jobs.js';
+import { makeBeat, BEAT_STYLES } from './beatmaker.js';
 
 const $ = (id) => document.getElementById(id);
 const DEFAULT_TUNE = { enabled: true, root: 9, scale: 'minor', speedMs: 15, amount: 100, keepVibrato: 30, humanize: 0, flex: 0, glideMs: 0, transpose: 0, formant: 0, detune: 0, mask: null, edits: {} };
@@ -656,6 +657,81 @@ function afterTakesChanged() {
   drawTimeline();
   markDirty();
   scheduleTune(0);
+}
+
+// ------------------------------------------------------------------ beat maker
+// Writes an original beat in a chosen key and tempo. With a beat already loaded it starts from that beat's
+// key, tempo and length, so a vocal recorded over the old one drops straight onto the new one.
+let madeBeat = null, beatSeed = 0, beatSrc = null;
+function stopBeatPreview() {
+  if (beatSrc) { try { beatSrc.onended = null; beatSrc.stop(); } catch { /* already stopped */ } beatSrc = null; }
+  $('beatPreview').textContent = 'Play it';
+}
+function bindBeatMaker() {
+  Object.entries(BEAT_STYLES).forEach(([k, v]) => $('beatStyle').add(new Option(v.label, k)));
+  D.NOTE_NAMES.forEach((n, i) => $('beatRoot').add(new Option(n, String(i))));
+  const about = () => { $('beatStyleAbout').textContent = BEAT_STYLES[$('beatStyle').value].about; };
+  $('beatStyle').addEventListener('change', about); about();
+  const open = () => {
+    if (recording) return;
+    stopPlayback(true);
+    const len = $('beatLength'); len.textContent = '';
+    const had = P.beat ? Math.round(P.beat.channels[0].length / P.sr) : 0;
+    if (had >= 20) len.add(new Option(`Same as my beat (${fmtTime(had, false)})`, String(had)));
+    [[60, '1:00'], [120, '2:00'], [150, '2:30'], [180, '3:00'], [210, '3:30'], [240, '4:00']].forEach(([v, t]) => len.add(new Option(t, String(v))));
+    if (had < 20) len.value = '150';
+    $('beatRoot').value = String(P.tune.root);
+    $('beatScale').value = P.tune.scale.toLowerCase().includes('major') ? 'major' : 'minor';
+    $('beatBpm').value = P.bpm || 140;
+    $('beatIntro').textContent = P.beat
+      ? `Starting from your loaded beat: ${D.NOTE_NAMES[P.tune.root]} ${$('beatScale').value}, ${P.bpm} BPM. You get a brand new beat in that key and tempo, with its own drums, bass, chords and melody, so your vocal still fits. It does not copy the old beat's notes.`
+      : 'A brand new beat, written and played from scratch in the key and tempo you pick. It is yours to release.';
+    madeBeat = null; $('beatPreview').hidden = true; $('beatUse').hidden = true; $('beatGo').textContent = 'Make the beat'; $('beatMsg').textContent = ''; $('beatMsg').className = 'note';
+    $('beatDialog').showModal();
+  };
+  $('btnMakeBeat').addEventListener('click', open);
+  $('btnMakeBeatHint').addEventListener('click', (e) => { e.stopPropagation(); open(); });
+  $('beatGo').addEventListener('click', async () => {
+    const btn = $('beatGo'), msg = $('beatMsg');
+    stopBeatPreview();
+    const bpm = Math.max(60, Math.min(200, Math.round(Number($('beatBpm').value) || 140)));
+    $('beatBpm').value = bpm;
+    btn.disabled = true; msg.className = 'note'; msg.textContent = 'Writing and playing your beat…';
+    try {
+      const sr = projectSr();
+      beatSeed = (Date.now() % 100000) + Math.floor(Math.random() * 1000);
+      const style = $('beatStyle').value, root = Number($('beatRoot').value), scale = $('beatScale').value;
+      const channels = await makeBeat({ sr, bpm, root, scale, style, seconds: Number($('beatLength').value), seed: beatSeed, onProgress: (p) => { msg.textContent = `Writing and playing your beat… ${Math.round(p * 100)}%`; } });
+      madeBeat = { channels, bpm, root, scale, style };
+      $('beatPreview').hidden = false; $('beatUse').hidden = false; btn.textContent = 'Make another';
+      msg.textContent = `${BEAT_STYLES[style].label} beat in ${D.NOTE_NAMES[root]} ${scale}, ${bpm} BPM, ${fmtTime(channels[0].length / sr, false)}. Play it. Not feeling it? Make another: every one comes out different.`;
+    } catch (err) { console.error(err); msg.textContent = `The beat couldn't be made: ${err.message}`; msg.classList.add('err'); }
+    finally { btn.disabled = false; }
+  });
+  $('beatPreview').addEventListener('click', () => {
+    if (beatSrc) { stopBeatPreview(); return; }
+    if (!madeBeat) return;
+    const c = audio();
+    const b = c.createBuffer(2, madeBeat.channels[0].length, P.sr);
+    b.copyToChannel(madeBeat.channels[0], 0); b.copyToChannel(madeBeat.channels[1], 1);
+    beatSrc = c.createBufferSource(); beatSrc.buffer = b; beatSrc.connect(c.destination); beatSrc.start();
+    const src = beatSrc; src.onended = () => { if (beatSrc === src) stopBeatPreview(); };
+    $('beatPreview').textContent = 'Stop';
+  });
+  $('beatUse').addEventListener('click', () => {
+    if (!madeBeat || !canWork()) return;
+    stopBeatPreview();
+    const m = madeBeat;
+    P.beat = { id: uid(), name: `${BEAT_STYLES[m.style].label} beat, ${D.NOTE_NAMES[m.root]} ${m.scale} ${m.bpm}`, channels: m.channels, made: true };
+    P.bpm = m.bpm; P.tune.root = m.root; P.tune.scale = m.scale; P.key = { root: m.root, scale: m.scale, label: `${D.NOTE_NAMES[m.root]} ${m.scale}` };
+    if (P.name === 'Untitled session') { P.name = P.beat.name; $('projectName').value = P.name; }
+    position = 0; madeBeat = null;
+    $('beatDialog').close();
+    syncControls(); updateBeatUi(); drawTimeline(); markDirty();
+    if (placedTakes().length) scheduleTune(0); else scheduleRender(0);
+    toast('Your new beat is loaded. It is an original, made here, so it is yours to release.');
+  });
+  $('beatDialog').addEventListener('close', stopBeatPreview);
 }
 
 // ------------------------------------------------------------------ beat + vocal import
@@ -1595,6 +1671,7 @@ function bindControls() {
   $('presetSelect').append(free, paid);
   $('presetSelect').addEventListener('change', (e) => applyPreset(e.target.value));
   $('btnPro').addEventListener('click', () => openPro());
+  bindBeatMaker();
   $('btnCheck').addEventListener('click', runCheck);
   $('btnReleasePack').addEventListener('click', openRelease);
   $('releaseForm').addEventListener('submit', (e) => { e.preventDefault(); buildRelease(); });

@@ -322,3 +322,7 @@ body.studio { min-height: 100vh; display: flex; flex-direction: column; backgrou
 .note.ok { color: var(--cyan); }
 .stats b { font-size: 15px; white-space: nowrap; }
 .note.warn { color: var(--yellow); }
+
+/* beat maker */
+.beat-form { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.beat-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
