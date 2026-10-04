@@ -1,4 +1,4 @@
-// The STUDIO365 console. One signal path, built two ways: live in the browser's audio engine while you
+// The HSW365studio console. One signal path, built two ways: live in the browser's audio engine while you
 // listen (faders, mutes and EQ answer instantly, meters move), and offline when a mix is bounced or exported.
 import { dbToGain } from './dsp.js';
 
@@ -275,6 +275,10 @@ export async function createGraph(ctx, { live = false } = {}) {
       return input;
     },
     clearLayers() { for (const l of layerNodes) { try { l.p.disconnect(); } catch { /* gone */ } } layerNodes.length = 0; },
+    // Let go of some stacked voices (by the input addLayer returned) and leave the rest playing.
+    releaseLayers(inputs) {
+      for (let i = layerNodes.length - 1; i >= 0; i--) if (inputs.includes(layerNodes[i].input)) { try { layerNodes[i].p.disconnect(); } catch { /* gone */ } layerNodes.splice(i, 1); }
+    },
 
     // The channel for one extra vocal track. Made on first use, kept for the life of the graph.
     track(id) {
@@ -369,7 +373,8 @@ export async function createGraph(ctx, { live = false } = {}) {
 // layers: extra voices stacked behind the lead: [{ audio: Float32Array, offsetMs, db, pan (-100..100) }]
 // vocals: the lead track's clips [{ audio, offsetMs }]. tracks: [{ id, db, pan, clips: [{ audio, offsetMs }] }].
 // `vocal` (one lead clip, offset in mix.vocalOffsetMs) is still accepted.
-export async function renderMix({ sr, beat, vocal, vocals = null, mix, bpm = 90, vocalOnly = false, layers = [], tracks = [] }) {
+// signal: an AbortSignal; an aborted bounce stops within a couple of seconds of audio. onProgress(0..1).
+export async function renderMix({ sr, beat, vocal, vocals = null, mix, bpm = 90, vocalOnly = false, layers = [], tracks = [], signal = null, onProgress = null }) {
   const m = migrateMix(mix, true);
   const lead = vocals || (vocal ? [{ audio: vocal, offsetMs: m.vocalOffsetMs || 0 }] : []);
   if (vocalOnly) { m.solo = { ...DEFAULT_MIX.solo }; m.mute = { ...m.mute, vocal: false, stack: false }; }
@@ -407,6 +412,22 @@ export async function renderMix({ sr, beat, vocal, vocals = null, mix, bpm = 90,
   for (const tr of tracks) for (const c of tr.clips) play(c, G.track(tr.id).input);
   G.update(m, bpm, tracks);
   for (const c of lead) play(c, G.inputs.lead);
-  const rendered = await ctx.startRendering();
+  // The bounce pauses every two seconds of audio: that is where it reports progress and where it can be stopped.
+  const total = length / sr, STEP = 2;
+  const stop = () => Object.assign(new Error('cancelled'), { name: 'AbortError' });
+  if (signal && signal.aborted) throw stop();
+  const rendered = await new Promise((resolve, reject) => {
+    if (signal || onProgress) {
+      for (let t = STEP; t < total - 0.05; t += STEP) {
+        ctx.suspend(t).then(() => {
+          if (signal && signal.aborted) { reject(stop()); return; }   // never resumed: the bounce ends here
+          if (onProgress) onProgress(t / total);
+          ctx.resume();
+        }, () => { /* the bounce already ended */ });
+      }
+    }
+    ctx.startRendering().then(resolve, reject);
+  });
+  if (onProgress) onProgress(1);
   return [rendered.getChannelData(0).slice(), rendered.getChannelData(1).slice()];
 }

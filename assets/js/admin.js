@@ -1,4 +1,4 @@
-// STUDIO365 key maker. Runs entirely in the owner's browser: the owner key file never leaves this device.
+// HSW365studio key maker. Runs entirely in the owner's browser: the owner key file never leaves this device.
 import { signKey, verifyKey, makeKeyPair, fmtDate } from './license.js';
 
 const cfg = window.STUDIO365_CONFIG || {};
@@ -48,7 +48,7 @@ $('fileOwner').addEventListener('change', async (e) => {
     owner = { privateKey: j.privateKey, publicKey: j.publicKey };
     localStorage.setItem(OWNER, JSON.stringify(owner));
     paintOwner();
-  } catch { toast("That isn't a STUDIO365 owner key file. Pick studio365-owner-key.json.", true); }
+  } catch { toast("That isn't a HSW365studio owner key file. Pick studio365-owner-key.json.", true); }
 });
 $('btnForget').addEventListener('click', () => {
   if (!confirm('Remove the owner key from this browser? You will need the file again to make keys here.')) return;
@@ -75,7 +75,7 @@ $('makeForm').addEventListener('submit', async (e) => {
     const link = `${studioUrl}#key=${k.key}`;
     const until = fmtDate(k.expires);
     const text = [
-      `Your ${cfg.PRODUCT_NAME || 'STUDIO365'} ${{ starter: 'Starter', plus: 'Plus', pro: 'Pro' }[plan]} plan is ready.`, '',
+      `Your ${cfg.PRODUCT_NAME || 'HSW365studio'} ${{ starter: 'Starter', plus: 'Plus', pro: 'Pro' }[plan]} plan is ready.`, '',
       'Tap this link on the device you record on and your plan turns on by itself:', link, '',
       `It is good until ${until}. Nothing bills on its own. When you want another month, buy it again at hsw365.co and you get a new link.`, '',
       'If the link gives you trouble, open the studio, press Plans and paste this key:', k.key, '',
@@ -83,7 +83,7 @@ $('makeForm').addEventListener('submit', async (e) => {
     ].join('\n');
     last = { link, text, email };
     $('message').value = text;
-    $('btnEmail').href = `mailto:${email}?subject=${encodeURIComponent('Your STUDIO365 key')}&body=${encodeURIComponent(text)}`;
+    $('btnEmail').href = `mailto:${email}?subject=${encodeURIComponent('Your HSW365studio key')}&body=${encodeURIComponent(text)}`;
     $('result').hidden = false;
     log.unshift({ email, months, plan, made: Date.now(), expires: k.expires, key: k.key });
     localStorage.setItem(LOG, JSON.stringify(log));
@@ -122,7 +122,7 @@ $('btnCsv').addEventListener('click', () => {
 $('btnNewPair').addEventListener('click', async () => {
   if (!confirm('Make a new key pair? Old Pro keys stop working once the new public key is in config.js.')) return;
   const pair = await makeKeyPair();
-  save('studio365-owner-key.json', JSON.stringify({ product: 'STUDIO365', note: 'PRIVATE. Signs Pro keys. Never upload or share this file.', created: new Date().toISOString(), ...pair }, null, 2), 'application/json');
+  save('studio365-owner-key.json', JSON.stringify({ product: 'HSW365studio', note: 'PRIVATE. Signs Pro keys. Never upload or share this file.', created: new Date().toISOString(), ...pair }, null, 2), 'application/json');
   const p = pair.publicKey;
   $('pubOut').value = `LICENSE_PUBLIC_KEY: {\n    kty: "${p.kty}", crv: "${p.crv}",\n    x: "${p.x}",\n    y: "${p.y}"\n  },`;
   $('pubWrap').hidden = false;

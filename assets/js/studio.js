@@ -1,4 +1,4 @@
-// STUDIO365 studio — record, tune, mix, master, export. Everything runs in the browser; sessions live in IndexedDB.
+// HSW365studio — record, tune, mix, master, export. Everything runs in the browser; sessions live in IndexedDB.
 import * as D from './dsp.js';
 import { renderMix, createGraph, migrateMix, compFromMacro, DEFAULT_MIX, DELAY_NOTES } from './mixer.js';
 import * as Edit from './edit.js';
@@ -8,7 +8,7 @@ import * as Store from './store.js';
 import { initPro, isPro, isMember, planName, requirePro, openPro, FREE_PROJECTS } from './pro.js';
 import { PRESETS } from './presets.js';
 import * as Pack from './pack.js';
-import { runJob } from './dsp-jobs.js';
+import { work, cancelJobs, isCancel } from './jobs.js';
 import { makeBeat, BEAT_STYLES } from './beatmaker.js';
 
 const $ = (id) => document.getElementById(id);
@@ -26,7 +26,12 @@ let mixCache = null;          // { sig, channels, buffer, stats }
 let renderToken = 0;
 let tuneToken = 0;
 let playing = false, playStartCtx = 0, position = 0;
-let live = null, liveBusy = null, playSrcs = [], playDur = 0, playSig = '', playToken = 0;   // the live console
+let live = null, liveBusy = null, voices = [], playDur = 0, playSig = '', playToken = 0;   // the live console
+let playLayers = [], loopNext = null, transportTimer = null, liveTimer = null;
+let bounce = null, tuneBusy = false;                                                         // the background measuring bounce
+let recChunks = [], recPeaks = [], recLen = 0;                                                // the take being recorded
+let tlLayer = null, tlKey = '', pitchLayer = null, pitchKey = '';                             // drawn once, then only the playhead moves
+const LATENCY_KEY = 'studio365:latency', MIC_KEY = 'studio365:mic';
 const bufCache = new WeakMap();
 let zoom = 1, viewStart = 0, sel = null, tool = 'arrow', loopOn = false, tlDrag = null;       // timeline view + selection (seconds)
 let undoStack = [], redoStack = [];
@@ -54,56 +59,32 @@ function newProject() {
   };
 }
 
-// ------------------------------------------------------------------ worker
-// Heavy audio jobs run in a background worker. If this browser can't start it (or it never answers),
-// the same jobs run on the page instead: slower to respond while they work, but everything still works.
-let worker = null, workerOk = false, workerDead = false;
-let wid = 0;
-const pending = new Map();
-const runLocal = (type, payload) => new Promise((res, rej) => {
-  setTimeout(() => { try { res(runJob(type, payload).result); } catch (err) { rej(err); } }, 0);
-});
-function killWorker() {
-  if (workerDead) return;
-  workerDead = true; workerOk = false;
-  try { worker && worker.terminate(); } catch { /* already gone */ }
-  // anything that was waiting on the worker gets redone on the page
-  for (const [, p] of pending) (p.payload ? runLocal(p.type, p.payload).then(p.res, p.rej) : p.rej(new Error('The audio engine restarted. Try that again.')));
-  pending.clear();
-}
-try {
-  worker = new Worker(new URL('./dsp-worker.js', import.meta.url), { type: 'module' });
-  worker.onmessage = (e) => {
-    if (e.data.result === 'pong') { workerOk = true; return; }
-    const p = pending.get(e.data.id);
-    if (!p) return;
-    pending.delete(e.data.id);
-    e.data.ok ? p.res(e.data.result) : p.rej(new Error(e.data.error));
-  };
-  worker.onerror = (e) => { console.warn('Audio worker failed, running on the page instead.', e && e.message); killWorker(); };
-  worker.postMessage({ id: 0, type: 'ping' });
-  setTimeout(() => { if (!workerOk) killWorker(); }, 4000);
-} catch (err) { console.warn('Audio worker unavailable, running on the page instead.', err); workerDead = true; }
-const work = (type, payload, transfer = []) => {
-  if (workerDead || !worker) return runLocal(type, payload);
-  return new Promise((res, rej) => {
-    const id = ++wid;
-    // until the worker has proven it is alive, keep the data here too so the job can be redone locally
-    const keep = !workerOk;
-    pending.set(id, { res, rej, type, payload: keep ? payload : null });
-    try { worker.postMessage({ id, type, payload }, keep ? [] : transfer); }
-    catch (err) { pending.delete(id); runLocal(type, payload).then(res, rej); }
-  });
-};
-
 // ------------------------------------------------------------------ audio context
+function latencyHint() { try { return localStorage.getItem(LATENCY_KEY) || 'interactive'; } catch { return 'interactive'; } }
 function audio() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
-    ctx = new AC({ latencyHint: 'interactive' });
+    ctx = new AC({ latencyHint: latencyHint() });
+    const mine = ctx;
+    // the sound card went away (unplugged, computer slept): stop cleanly instead of sitting there silent
+    ctx.addEventListener('statechange', () => {
+      if (ctx !== mine || mine.state === 'running' || mine.state === 'closed') return;
+      if (playing) { stopPlayback(true); toast('Sound was interrupted by your computer. Press Play to carry on.', true); }
+    });
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state !== 'running') ctx.resume().catch(() => { /* needs a click first */ });
   return ctx;
+}
+// A fresh audio engine: after changing the buffer setting, or when the old one will not come back.
+async function rebuildAudio() {
+  stopPlayback(true);
+  abortBounce();
+  dropMic();
+  const old = ctx;
+  ctx = null; live = null; liveBusy = null; recNode = null; monitorGain = null; silentOut = null;
+  if (old) { try { await old.close(); } catch { /* already closed */ } }
+  audio();
+  scheduleRender();
 }
 function projectSr() { if (!P.sr) P.sr = audio().sampleRate; return P.sr; }
 
@@ -234,7 +215,7 @@ async function buildLayers() {
       let c = stackCache.double.get(t.id);
       if (!c || c.sig !== sig) {
         setRenderState('Building your doubles…', true);
-        c = { sig, ...(await work('double', { x: lead.slice(), sr: P.sr })) };
+        c = { sig, ...(await work('double', { x: lead.slice(), sr: P.sr }, [], { key: `double:${t.id}` })) };
         stackCache.double.set(t.id, c);
       }
       const db = -20 + S.double * 0.15;
@@ -245,7 +226,7 @@ async function buildLayers() {
       let c = stackCache.harmony.get(t.id);
       if (!c || c.sig !== sig) {
         setRenderState('Singing the harmony…', true);
-        const r = await work('harmony', { x: t.audio.slice(), sr: P.sr, mode: S.harmony, settings: { root: P.tune.root, scale: P.tune.scale, keepVibrato: P.tune.keepVibrato / 100 } });
+        const r = await work('harmony', { x: t.audio.slice(), sr: P.sr, mode: S.harmony, settings: { root: P.tune.root, scale: P.tune.scale, keepVibrato: P.tune.keepVibrato / 100 } }, [], { key: `harmony:${t.id}` });
         c = { sig, audio: r.audio };
         stackCache.harmony.set(t.id, c);
       }
@@ -259,7 +240,7 @@ const clipSig = () => P.tracks.map((tr) => [tr.id, clipsOf(tr).map((t) => [t.id,
 function renderSig() {
   return JSON.stringify({
     stack: stackActive() ? P.stack : null, beat: P.beat ? P.beat.id : null, clips: clipSig(),
-    levels: extraTracks().map((tr) => [tr.db, tr.pan]), mix: P.mix, master: P.master, bpm: P.bpm,
+    levels: extraTracks().map((tr) => [tr.db, tr.pan]), mix: P.mix, master: [P.master.enabled, P.master.target, P.master.ceiling], bpm: P.bpm,
   });
 }
 
@@ -317,28 +298,37 @@ function scheduleTune(delay = 350) {
   clearTimeout(tuneTimer);
   tuneTimer = setTimeout(runTune, delay);
 }
-// Tunes every clip in the mix that needs it, the selected one first.
+// Tunes every clip in the mix that needs it, the selected one first. A newer request stops the one in flight.
 async function runTune() {
+  tuneTimer = null;
+  const token = ++tuneToken;
+  cancelJobs('tune');
   const sel = activeTake();
   const list = P.tune.enabled ? placedTakes().filter((t) => !tunedFor(t)) : [];
   list.sort((x, y) => (x === sel ? -1 : y === sel ? 1 : 0));
-  if (!list.length) { drawPitch(); drawTimeline(); updateTuneStatus(); scheduleRender(0); return; }
-  const token = ++tuneToken;
+  if (!list.length) { tuneBusy = false; drawPitch(); drawTimeline(); updateTuneStatus(); scheduleRender(0); return; }
+  tuneBusy = true;
   try {
     for (const t of list) {
       const sig = tuneSig(t);
       setRenderState(`Tuning ${t.name} to ${D.NOTE_NAMES[P.tune.root]} ${D.SCALE_LABELS[P.tune.scale].toLowerCase()}…`, true);
-      const res = await work('autotune', { x: t.audio.slice(), sr: P.sr, settings: tuneSettings(t) });
+      const x = t.audio.slice();
+      const res = await work('autotune', { x, sr: P.sr, settings: tuneSettings(t) }, [x.buffer], { lane: 'tune' });
       if (token !== tuneToken) return;
       tunedCache.set(t.id, { sig, takeId: t.id, audio: res.audio, f0: res.f0, shift: res.shift, target: res.target, hop: res.hop, win: res.win });
       if (t === activeTake()) drawPitch();
       drawTimeline();
+      refreshLive();
     }
+    tuneBusy = false;
     updateTuneStatus();
+    setRenderState(readyText());
     scheduleRender(0);
   } catch (err) {
+    if (isCancel(err) || token !== tuneToken) return;
+    tuneBusy = false;
     console.error(err);
-    if (token === tuneToken) { setRenderState('Tuning failed. The raw take is playing instead.'); toast(`Tuning failed: ${err.message}`, true); scheduleRender(0); }
+    setRenderState('Tuning failed. The raw take is playing instead.'); toast(`Tuning failed: ${err.message}`, true); scheduleRender(0);
   }
 }
 function updateTuneStatus() {
@@ -359,57 +349,103 @@ function updateTuneStatus() {
 }
 
 // ------------------------------------------------------------------ mixing
-// Settings reach the live console at once. The offline bounce behind it (loudness, export, record check)
-// follows a moment later, and waits a little longer while you are listening.
-function scheduleRender(delay = 220) {
+// What you hear is the live console: every setting lands on it at once and nothing waits for a render.
+// A full bounce is only needed to measure the finished record (loudness, peak, the record check). That runs
+// by itself in the background once you stop and leave the mix alone, and is dropped the moment you play,
+// record or change something. Export always does its own fresh bounce.
+function scheduleRender() {
   applyLive();
-  clearTimeout(renderTimer);
-  renderTimer = setTimeout(runRender, playing ? Math.max(delay, 450) : delay);
+  refreshLive();
+  scheduleBounce();
 }
-async function runRender() {
-  if (!hasAudio()) { mixCache = null; updateTransport(); setRenderState('Load a beat or record a take to start.'); return; }
+// Something that decides which audio is loaded changed while playing (a clip moved, tuning finished, the gate):
+// reload in place, once the changes stop arriving.
+function refreshLive() {
+  clearTimeout(liveTimer);
+  if (!playing) return;
+  liveTimer = setTimeout(() => { if (playing && liveSig() !== playSig) restartPlayback(); }, 90);
+}
+function abortBounce() {
+  clearTimeout(renderTimer); renderTimer = null;
+  if (bounce) { bounce.ctl.abort(); cancelJobs('main', 'master-bounce'); }
+}
+function scheduleBounce(delay = 1400) {
+  clearTimeout(renderTimer); renderTimer = null;
+  if (bounce && bounce.sig !== renderSig()) abortBounce();
+  if (!hasAudio()) { mixCache = null; updateStats(); updateTransport(); setRenderState('Load a beat or record a take to start.'); return; }
+  updateStats();
+  if (playing || recording) return;
+  renderTimer = setTimeout(() => { runRender().catch((err) => console.error(err)); }, delay);
+}
+const tunePending = () => P.tune.enabled && (tuneBusy || tuneTimer != null) && placedTakes().some((t) => !tunedFor(t));
+// Resolves true when the measured mix matches what is on the console.
+async function runRender(force = false) {
+  clearTimeout(renderTimer); renderTimer = null;
+  if (!hasAudio()) { mixCache = null; updateTransport(); return false; }
   const sig = renderSig();
-  if (playing && liveSig() !== playSig) restartPlayback();
-  if (mixCache && mixCache.sig === sig) { setRenderState(readyText()); return; }
-  const token = ++renderToken;
-  setRenderState('Mixing…', true);
-  try {
-    const layers = await buildLayers();
-    if (token !== renderToken) return;
-    if (sig !== renderSig()) { scheduleRender(0); return; }
-    setRenderState('Mixing…', true);
-    let channels = await renderMix({ sr: P.sr, beat: P.beat ? P.beat.channels : null, ...mixClips(), mix: P.mix, bpm: P.bpm, layers });
-    if (token !== renderToken) return;
-    let stats = null;
-    if (P.master.enabled) {
-      setRenderState('Mastering…', true);
-      const r = await work('master', { channels, sr: P.sr, target: P.master.target, ceiling: P.master.ceiling }, channels.map((c) => c.buffer));
-      if (token !== renderToken) return;
-      channels = r.channels; stats = r.stats;
-    } else {
-      stats = { lufs: null, peakDb: D.gainToDb(D.peak(channels)), reductionDb: 0 };
+  if (mixCache && mixCache.sig === sig) { updateStats(); if (!tuneBusy) setRenderState(readyText()); return true; }
+  if (!force && (playing || recording)) return false;
+  if (tunePending()) return false;                     // tuning asks for the bounce when it lands
+  if (bounce) { if (bounce.sig === sig) return bounce.promise; abortBounce(); }
+  const ctl = new AbortController();
+  const job = { sig, ctl, promise: null };
+  const say = (msg) => { if (bounce === job) setRenderState(msg, true); };
+  job.promise = (async () => {
+    try {
+      const layers = await buildLayers();
+      if (ctl.signal.aborted) return false;
+      say('Measuring the mix…');
+      let channels = await renderMix({ sr: P.sr, beat: P.beat ? P.beat.channels : null, ...mixClips(), mix: P.mix, bpm: P.bpm, layers, signal: ctl.signal, onProgress: (p) => say(`Measuring the mix… ${Math.round(p * 100)}%`) });
+      if (ctl.signal.aborted) return false;
+      let stats;
+      if (P.master.enabled) {
+        const r = await work('master', { channels, sr: P.sr, target: P.master.target, ceiling: P.master.ceiling }, channels.map((c) => c.buffer), { key: 'master-bounce' });
+        channels = r.channels; stats = r.stats;
+        P.master.gainDb = stats.gainDb;
+      } else {
+        stats = { lufs: null, peakDb: D.gainToDb(D.peak(channels)), reductionDb: 0 };
+      }
+      if (ctl.signal.aborted) return false;
+      if (sig !== renderSig()) { if (bounce === job) bounce = null; scheduleBounce(200); return false; }
+      mixCache = { sig, channels, stats };
+      updateStats(); updateTransport(); applyLive();
+      if (bounce === job) setRenderState(readyText());
+      return true;
+    } catch (err) {
+      if (isCancel(err) || ctl.signal.aborted) return false;
+      console.error(err);
+      if (bounce === job) setRenderState('The mix could not be measured. Playback and export still work.');
+      return false;
+    } finally {
+      if (bounce === job) { bounce = null; if ($('renderState').classList.contains('busy') && !tuneBusy) setRenderState(hasAudio() ? readyText() : ''); }
     }
-    mixCache = { sig, channels, stats };
-    updateStats();
-    updateTransport();
-    applyLive();
-    setRenderState(readyText());
-  } catch (err) {
-    console.error(err);
-    if (token === renderToken) { setRenderState('Mix failed.'); toast(`Mixing failed: ${err.message}`, true); }
+  })();
+  bounce = job;
+  return job.promise;
+}
+// For the things that need the measured mix right now (the record check): stop, wait for tuning, bounce.
+async function ensureBounce() {
+  stopPlayback(true);
+  for (let i = 0; i < 600; i++) {
+    if (!tunePending() && await runRender(true)) return true;
+    if (!hasAudio()) return false;
+    await new Promise((r) => setTimeout(r, 150));
   }
+  return false;
 }
 function readyText() {
   if (!placedTakes().length) return 'Beat loaded. Press Record when you are ready.';
   const n = stackActive() ? (P.stack.double > 0 ? 2 : 0) + (P.stack.harmony !== 'off' && P.stack.harmonyLevel > 0 ? 1 : 0) : 0;
   const k = extraTracks().filter((tr) => tr.clips.length).length;
-  return `Mix is current. ${k ? `${k + 1} vocal tracks. ` : ''}${n ? `${n} stacked voice${n === 1 ? '' : 's'}. ` : ''}${P.master.enabled ? 'Master on.' : 'Master off.'}`;
+  return `Ready. ${k ? `${k + 1} vocal tracks. ` : ''}${n ? `${n} stacked voice${n === 1 ? '' : 's'}. ` : ''}${P.master.enabled ? 'Master on.' : 'Master off.'}`;
 }
 function updateStats() {
   const s = mixCache?.stats;
   $('statLufs').textContent = s && s.lufs != null ? `${s.lufs.toFixed(1)} LUFS` : '–';
   $('statPeak').textContent = s ? `${s.peakDb.toFixed(1)} dB` : '–';
   $('statGr').textContent = s && s.reductionDb != null ? `${Math.abs(s.reductionDb).toFixed(1)} dB` : '–';
+  // dimmed while the numbers are from before your last change
+  $('statLufs').closest('.stats').classList.toggle('stale', !!mixCache && mixCache.sig !== renderSig());
 }
 
 // ------------------------------------------------------------------ playback (the live console)
@@ -422,8 +458,10 @@ async function liveGraph() {
 function applyLive() {
   if (!live) return;
   live.update(P.mix, P.bpm, extraTracks());
+  // the level the last measurement asked for; it is remembered with the session
   const s = mixCache?.stats;
-  live.setMaster({ on: P.master.enabled, gainDb: s && s.gainDb != null ? s.gainDb : 0, ceiling: P.master.ceiling });
+  const gainDb = s && s.gainDb != null ? s.gainDb : (P.master.gainDb || 0);
+  live.setMaster({ on: P.master.enabled, gainDb, ceiling: P.master.ceiling });
 }
 function monoBuffer(arr) {
   let b = bufCache.get(arr);
@@ -441,12 +479,25 @@ function liveSig() {
   return JSON.stringify([P.beat ? P.beat.id : 0, clipSig(), P.mix.gate, P.mix.vocalOffsetMs, stackActive() ? P.stack : 0]);
 }
 function currentPosition() {
-  if (playing && ctx) return Math.max(0, ctx.currentTime - playStartCtx);
+  if (playing && ctx) {
+    if (loopNext && ctx.currentTime >= loopNext.at) { playStartCtx = loopNext.start; loopNext = null; }
+    return Math.max(0, ctx.currentTime - playStartCtx);
+  }
   return position;
 }
-function killSources() {
-  for (const s of playSrcs) { try { s.stop(); } catch { /* not started */ } try { s.disconnect(); } catch { /* gone */ } }
-  playSrcs = [];
+// Fade a set of playing sources out at context time `at` and let go of them. No clicks on stop, seek or loop.
+function fadeStop(v, at) {
+  const c = ctx; if (!c) return;
+  const t = Math.max(at, c.currentTime);
+  for (const { s, g } of v.srcs) {
+    try { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, 0.004); s.stop(t + 0.03); } catch { /* never started */ }
+  }
+  const G = v.graph, ins = v.layerIns;
+  if (ins.length && G.releaseLayers) setTimeout(() => G.releaseLayers(ins), Math.max(0, (t - c.currentTime) * 1000) + 120);
+}
+function killSources(at = 0) {
+  const old = voices; voices = []; loopNext = null;
+  for (const v of old) fadeStop(v, at);
 }
 // Load every source onto the console and start them together at context time `when`. Returns the mix length.
 function launchMix(G, layers, from, when) {
@@ -455,29 +506,37 @@ function launchMix(G, layers, from, when) {
   const tail = Math.max(2.5, P.mix.revDecay + 0.5);
   let dur = P.beat ? P.beat.channels[0].length / sr : 0;
   for (const l of [...vocals, ...layers, ...tracks.flatMap((t) => t.clips)]) dur = Math.max(dur, l.offsetMs / 1000 + l.audio.length / sr + tail);
-  G.clearLayers();
+  const v = { srcs: [], layerIns: [], graph: G };
   const launch = (buffer, dest, off) => {
     if (from - off >= buffer.duration) return;
-    const s = c.createBufferSource(); s.buffer = buffer; s.connect(dest);
-    if (from >= off) s.start(when, from - off); else s.start(when + (off - from), 0);
-    playSrcs.push(s);
+    const s = c.createBufferSource(); s.buffer = buffer;
+    const g = c.createGain();
+    s.connect(g).connect(dest);
+    if (from > off) { g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(1, when + 0.005); s.start(when, from - off); }
+    else s.start(when + (off - from), 0);
+    s.onended = () => { try { s.disconnect(); g.disconnect(); } catch { /* gone */ } };
+    v.srcs.push({ s, g });
   };
   if (P.beat) launch(beatBuffer(), G.inputs.beat, 0);
-  for (const v of vocals) launch(monoBuffer(v.audio), G.inputs.lead, v.offsetMs / 1000);
-  for (const l of layers) launch(monoBuffer(l.audio), G.addLayer({ db: l.db, pan: l.pan }), l.offsetMs / 1000);
+  for (const cl of vocals) launch(monoBuffer(cl.audio), G.inputs.lead, cl.offsetMs / 1000);
+  for (const l of layers) { const input = G.addLayer({ db: l.db, pan: l.pan }); v.layerIns.push(input); launch(monoBuffer(l.audio), input, l.offsetMs / 1000); }
   for (const tr of tracks) for (const cl of tr.clips) launch(monoBuffer(cl.audio), G.track(tr.id).input, cl.offsetMs / 1000);
+  voices.push(v);
   applyLive();
   return dur;
 }
 async function startPlayback(from = position) {
   if (recording || !hasAudio()) return;
   const c = audio();
-  await c.resume();
-  const token = ++playToken;
+  let token = ++playToken;
+  abortBounce();
   killSources();
   let G, layers;
   try {
-    if (!mixCache) await runRender();
+    if (c.state !== 'running') await Promise.race([c.resume(), new Promise((r) => setTimeout(r, 1500))]);
+    if (token !== playToken) return;
+    // the sound card never came back: start a fresh audio engine rather than sit there silent
+    if (c.state !== 'running') { await rebuildAudio(); token = ++playToken; }
     G = await liveGraph();
     layers = await buildLayers();
   } catch (err) { console.error(err); toast(`Playback failed: ${err.message}`, true); return; }
@@ -485,32 +544,57 @@ async function startPlayback(from = position) {
   const total = Math.max(projectDuration(), 0.5);
   if (from >= total - 0.05) from = 0;
   if (loopOn && sel && (from < sel.a || from >= sel.b - 0.02)) from = sel.a;
-  const when = c.currentTime + 0.05;
+  const when = audio().currentTime + 0.05;
+  playLayers = layers;
   playDur = launchMix(G, layers, from, when);
   playStartCtx = when - from; playSig = liveSig(); playing = true;
-  if (!$('renderState').classList.contains('busy') || mixCache?.sig === renderSig()) setRenderState(readyText());
+  clearInterval(transportTimer); transportTimer = setInterval(transportTick, 30);
+  if (!tuneBusy) setRenderState(readyText());
   updateTransport();
   kickMeters();
   requestAnimationFrame(tick);
 }
 function stopPlayback(keepPosition = true) {
   playToken++;
+  const was = playing;
   if (playing) position = keepPosition ? Math.min(currentPosition(), projectDuration()) : 0;
+  clearInterval(transportTimer); transportTimer = null;
+  clearTimeout(liveTimer);
   killSources();
   playing = false;
   updateTransport();
   drawTimeline();
+  if (was) scheduleBounce();
 }
 function restartPlayback(at = currentPosition()) { stopPlayback(true); position = at; return startPlayback(at); }
-function tick() {
-  if (playing) {
-    const pos = currentPosition();
-    if (loopOn && sel && pos >= sel.b) { restartPlayback(sel.a); return; }
-    if (pos >= playDur) { stopPlayback(false); drawPitch(); return; }
+// The transport clock. It runs off the audio clock, not the screen, so a loop comes round on the exact
+// sample and the song still stops at the end when the tab is in the background.
+function transportTick() {
+  if (!playing || !ctx) return;
+  const pos = currentPosition();
+  if (loopOn && sel && sel.b - sel.a > 0.05) {
+    if (loopNext) return;
+    if (pos > sel.b + 0.02 || pos < sel.a - 0.05) { restartPlayback(sel.a); return; }
+    const endAt = playStartCtx + sel.b, ahead = document.hidden ? 1.3 : 0.15;
+    if (endAt - ctx.currentTime < ahead && live) {
+      // start the next pass now, timed to begin exactly where this one ends
+      const at = Math.max(endAt, ctx.currentTime + 0.02);
+      const old = voices; voices = [];
+      for (const v of old) fadeStop(v, at);
+      launchMix(live, playLayers, sel.a, at);
+      loopNext = { at, start: at - sel.a };
+    }
+    return;
   }
-  $('clock').textContent = fmtTime(recording ? Math.max(0, ctx.currentTime - recStartAt + recFrom) : currentPosition());
-  drawTimeline();
-  if (playing && !$('pitchPanel').hidden) drawPitch();
+  if (pos >= playDur) { stopPlayback(false); drawPitch(); }
+}
+// The screen: clock, playhead, meters. Only drawing happens here.
+let lastClock = '';
+function tick() {
+  const txt = fmtTime(recording ? Math.max(0, ctx.currentTime - recStartAt + recFrom) : currentPosition());
+  if (txt !== lastClock) { $('clock').textContent = txt; lastClock = txt; }
+  paintTimeline();
+  if (playing && !$('pitchPanel').hidden) paintPitch();
   if (playing || recording) requestAnimationFrame(tick);
 }
 
@@ -523,25 +607,58 @@ function click(time, accent) {
   o.connect(g).connect(c.destination); o.start(time); o.stop(time + 0.07);
 }
 
+function dropMic() {
+  try { if (micSrc) micSrc.disconnect(); } catch { /* gone */ }
+  if (micStream) micStream.getTracks().forEach((t) => { t.onended = null; t.stop(); });
+  micStream = null; micSrc = null;
+  $('meterFill').style.width = '0%';
+}
+function micId() { try { return localStorage.getItem(MIC_KEY) || ''; } catch { return ''; } }
 async function ensureMic() {
   const c = audio();
   if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error('This browser cannot record audio. Use current Chrome, Edge, Firefox or Safari.'), { user: true });
+  if (micStream && !micStream.getAudioTracks().some((t) => t.readyState === 'live')) dropMic();
   if (!micStream) {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+    const base = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 };
+    const id = micId();
+    try { micStream = await navigator.mediaDevices.getUserMedia({ audio: id ? { ...base, deviceId: { exact: id } } : base }); }
+    catch (err) {
+      // the chosen mic is gone: fall back to the computer's default one
+      if (!id || (err.name !== 'OverconstrainedError' && err.name !== 'NotFoundError')) throw err;
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: base });
+    }
+    // unplugged or taken by another app: the next Record asks for it again instead of recording silence
+    micStream.getAudioTracks().forEach((t) => { t.onended = () => { if (recording) stopRecording(); dropMic(); toast('The microphone disconnected. Plug it back in, or pick another one under Audio.', true); }; });
   }
   if (!recNode) {
     await c.audioWorklet.addModule(new URL('./recorder-worklet.js', import.meta.url));
-    micSrc = c.createMediaStreamSource(micStream);
     recNode = new AudioWorkletNode(c, 'studio365-recorder', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1, channelCountMode: 'explicit' });
     silentOut = c.createGain(); silentOut.gain.value = 0;
-    micSrc.connect(recNode).connect(silentOut).connect(c.destination);
+    recNode.connect(silentOut).connect(c.destination);
     monitorGain = c.createGain(); monitorGain.gain.value = $('optMonitor').checked ? 1 : 0;
-    micSrc.connect(monitorGain).connect(c.destination);
+    monitorGain.connect(c.destination);
     recNode.port.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'meter') updateMeter(m.peak);
-      if (m.type === 'done' && recResolve) { const r = recResolve; recResolve = null; r(m.audio || new Float32Array(0)); }
+      else if (m.type === 'chunk') addRecChunk(m.audio);
+      else if (m.type === 'done') { if (m.audio) addRecChunk(m.audio); if (recResolve) { const r = recResolve; recResolve = null; r(); } }
     };
+  }
+  if (!micSrc) {
+    micSrc = c.createMediaStreamSource(micStream);
+    micSrc.connect(recNode);
+    micSrc.connect(monitorGain);
+  }
+}
+// Audio arrives from the recorder in blocks while you record; the timeline draws the take as it grows.
+const REC_BIN = 256;
+function addRecChunk(a) {
+  recChunks.push(a); recLen += a.length;
+  for (let i = 0; i < a.length; i += REC_BIN) {
+    let mn = 0, mx = 0;
+    const e = Math.min(a.length, i + REC_BIN);
+    for (let j = i; j < e; j++) { const v = a[j]; if (v < mn) mn = v; else if (v > mx) mx = v; }
+    recPeaks.push(mn, mx);
   }
 }
 
@@ -572,12 +689,15 @@ async function startRecording() {
   }
   projectSr();
   stopPlayback(true);
+  abortBounce();
   // the mix you record over: the beat and every vocal already down, through the console
   let G = null, layers = [];
   if (hasAudio()) {
-    try { if (!mixCache) await runRender(); G = await liveGraph(); layers = await buildLayers(); }
+    try { G = await liveGraph(); layers = await buildLayers(); }
     catch (err) { console.error(err); toast(`Couldn't start the mix: ${err.message}`, true); return; }
   }
+  if (recording) return;
+  recChunks = []; recPeaks = []; recLen = 0;
   recFrom = Math.max(0, hasAudio() ? Math.min(position, Math.max(0, projectDuration() - 0.5)) : 0);
   const bpm = P.bpm || 90, spb = 60 / bpm;
   const countBeats = $('optCountIn').checked ? 4 : 0;
@@ -600,7 +720,7 @@ async function startRecording() {
     }, 50);
   }
   recNode.port.postMessage({ cmd: 'start', frame: Math.round(recStartAt * c.sampleRate) });
-  recording = true;
+  recording = true; lastClock = '';
   $('btnRecord').setAttribute('aria-pressed', 'true');
   $('btnRecord').querySelector('.rec-label').textContent = countBeats ? 'Count-in' : 'Stop';
   if (countBeats) {
@@ -612,21 +732,26 @@ async function startRecording() {
 }
 
 async function stopRecording() {
+  if (!recording || !recNode) return;
   const c = audio();
-  const done = new Promise((res) => { recResolve = res; });
+  // if the audio engine stalls, keep what has already arrived instead of waiting forever
+  const done = new Promise((res) => { recResolve = res; setTimeout(() => { if (recResolve === res) { recResolve = null; res(); } }, 1500); });
   recNode.port.postMessage({ cmd: 'stop' });
   killSources();
   clearInterval(clickTimer); clickTimer = null;
   recording = false;
   const btn = $('btnRecord');
   btn.setAttribute('aria-pressed', 'false'); btn.classList.remove('counting'); btn.querySelector('.rec-label').textContent = 'Record';
-  let raw = await done;
+  await done;
+  let raw = new Float32Array(recLen);
+  { let o = 0; for (const ch of recChunks) { raw.set(ch, o); o += ch.length; } }
+  recChunks = []; recPeaks = []; recLen = 0;
   // compensate round-trip latency so the take sits on the beat
-  const track = micStream.getAudioTracks()[0];
-  const inLat = (track.getSettings && track.getSettings().latency) || 0;
+  const track = micStream ? micStream.getAudioTracks()[0] : null;
+  const inLat = (track && track.getSettings && track.getSettings().latency) || 0;
   const comp = Math.round(((c.baseLatency || 0) + (c.outputLatency || 0) + inLat + (live && live.worklet ? 0.003 : 0)) * c.sampleRate);
   if (comp > 0 && raw.length > comp) raw = raw.slice(comp);
-  if (raw.length < c.sampleRate * 0.4) { toast('That take was too short to keep. Hold Record a little longer.'); updateTransport(); return; }
+  if (raw.length < c.sampleRate * 0.4) { toast('That take was too short to keep. Hold Record a little longer.'); updateTransport(); drawTimeline(); scheduleBounce(); return; }
   let take = raw;
   if (c.sampleRate !== P.sr) take = (await resample([raw], c.sampleRate, P.sr))[0];
   const pk = D.peak([take]);
@@ -657,6 +782,46 @@ function afterTakesChanged() {
   drawTimeline();
   markDirty();
   scheduleTune(0);
+}
+
+// ------------------------------------------------------------------ audio setup
+// Which microphone records, and how much safety buffer the sound card gets.
+function bindAudioSetup() {
+  const dlg = $('audioDialog'), micSel = $('audioMic'), bufSel = $('audioBuffer'), info = $('audioInfo');
+  const describe = () => {
+    if (!ctx) { info.textContent = ''; return; }
+    const ms = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000);
+    info.textContent = `Running at ${(ctx.sampleRate / 1000).toFixed(1)} kHz${ms ? `, about ${ms} ms from the computer to your ears` : ''}. Takes are lined up with the beat for you.`;
+  };
+  const fill = async () => {
+    micSel.textContent = '';
+    let list = [];
+    try { list = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput'); } catch { /* no access */ }
+    if (!list.length) { micSel.add(new Option('No microphone found', '')); micSel.disabled = true; return; }
+    micSel.disabled = recording;
+    micSel.add(new Option("Computer's default microphone", ''));
+    list.filter((d) => d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications').forEach((d, i) => micSel.add(new Option(d.label || `Microphone ${i + 1}`, d.deviceId)));
+    const want = micId();
+    micSel.value = [...micSel.options].some((o) => o.value === want) ? want : '';
+  };
+  const openMic = async () => {
+    const msg = $('audioMsg'); msg.className = 'note'; msg.textContent = 'Talk into the mic: the level bar next to the clock should move.';
+    try { await ensureMic(); }
+    catch (err) { msg.classList.add('warn'); msg.textContent = err.name === 'NotAllowedError' ? 'Microphone access is blocked. Allow the mic for this site in your browser, then open this again.' : err.name === 'NotFoundError' ? 'No microphone found. Plug one in or check your system sound settings.' : `Couldn't open the microphone: ${err.message}`; }
+    await fill(); describe();
+  };
+  $('btnAudio').addEventListener('click', () => { bufSel.value = latencyHint(); bufSel.disabled = recording; dlg.showModal(); openMic(); });
+  micSel.addEventListener('change', async () => {
+    try { localStorage.setItem(MIC_KEY, micSel.value); } catch { /* private mode */ }
+    dropMic(); await openMic();
+  });
+  bufSel.addEventListener('change', async () => {
+    if (recording) return;
+    try { localStorage.setItem(LATENCY_KEY, bufSel.value); } catch { /* private mode */ }
+    await rebuildAudio(); await openMic();
+    toast(bufSel.value === 'playback' ? 'Most stable is on. Playback gets the biggest safety buffer.' : 'Audio buffer changed.');
+  });
+  if (navigator.mediaDevices) navigator.mediaDevices.addEventListener('devicechange', () => { if (dlg.open) fill(); });
 }
 
 // ------------------------------------------------------------------ beat maker
@@ -727,7 +892,7 @@ function bindBeatMaker() {
     if (P.name === 'Untitled session') { P.name = P.beat.name; $('projectName').value = P.name; }
     position = 0; madeBeat = null;
     $('beatDialog').close();
-    syncControls(); updateBeatUi(); drawTimeline(); markDirty();
+    syncControls(); updateBeatUi(); updateTransport(); drawTimeline(); markDirty();
     if (placedTakes().length) scheduleTune(0); else scheduleRender(0);
     toast('Your new beat is loaded. It is an original, made here, so it is yours to release.');
   });
@@ -744,7 +909,7 @@ async function loadBeat(file) {
     P.beat = { id: uid(), name: file.name.replace(/\.[^.]+$/, ''), channels: stereo };
     if (P.name === 'Untitled session') { P.name = P.beat.name; $('projectName').value = P.name; }
     position = 0;
-    updateBeatUi(); drawTimeline(); markDirty();
+    updateBeatUi(); updateTransport(); drawTimeline(); markDirty();
     setRenderState('Reading key and tempo…', true);
     await analyzeBeat(true);
     scheduleRender(0);
@@ -806,7 +971,7 @@ function drawWave(g, peaks, x0, y0, w, h, color, cols) {
   }
 }
 // The stretch of the song on screen. Zoom 1 shows all of it; the pitch editor shares the same window.
-function timelineDur() { return Math.max(projectDuration(), recording ? ctx.currentTime - recStartAt + recFrom + 4 : 0, 8); }
+function timelineDur() { return Math.max(projectDuration(), recording ? Math.ceil((ctx.currentTime - recStartAt + recFrom + 4) / 10) * 10 : 0, 8); }
 function view() {
   const dur = timelineDur(), span = dur / zoom;
   viewStart = Math.max(0, Math.min(dur - span, viewStart));
@@ -828,15 +993,71 @@ const TRACK_COLORS = ['168,85,247', '34,211,238', '251,191,36', '239,68,68', '52
 const trackColor = (i) => TRACK_COLORS[i % TRACK_COLORS.length];
 const laneAt = (y) => (y < BEAT_H ? -1 : Math.min(P.tracks.length - 1, Math.floor((y - BEAT_H) / TRACK_H)));
 
+// While it plays or records, follow the playhead across a zoomed-in timeline.
+function followPlayhead() {
+  if (zoom > 1 && (playing || recording)) {
+    const v0 = view(), pos = recording ? ctx.currentTime - recStartAt + recFrom : currentPosition();
+    if (pos > v0.t0 + v0.span * 0.96 || pos < v0.t0) viewStart = pos - v0.span * 0.08;
+  }
+}
+// A copy of a canvas as it stands, so the moving parts can be drawn over it without redrawing everything.
+function keepLayer(cv, layer) {
+  if (!cv.width || !cv.height) return null;
+  if (!layer) layer = document.createElement('canvas');
+  if (layer.width !== cv.width || layer.height !== cv.height) { layer.width = cv.width; layer.height = cv.height; }
+  const lg = layer.getContext('2d'); lg.clearRect(0, 0, layer.width, layer.height); lg.drawImage(cv, 0, 0);
+  return layer;
+}
+function putLayer(cv, layer) {
+  const g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.drawImage(layer, 0, 0);
+  const dpr = cv.width / (cv.clientWidth || 1); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return g;
+}
+const viewKey = (cv) => { const v = view(); return `${v.t0}|${v.span}|${cv.clientWidth}|${cv.clientHeight}|${window.devicePixelRatio}`; };
+// Every frame while playing or recording: the picture of the session stays, only the playhead (and the take
+// being recorded) is drawn on top. The full picture is redrawn when something in it changes.
+function paintTimeline() {
+  const cv = $('timelineCanvas');
+  if (!cv.clientWidth) return;
+  followPlayhead();
+  if (!tlLayer || tlKey !== viewKey(cv)) { drawTimeline(); return; }
+  timelineOverlay(putLayer(cv, tlLayer), cv.clientWidth, cv.clientHeight);
+}
+function timelineOverlay(g, w, h) {
+  const { t0, span } = view();
+  const X = (t) => (t - t0) * (w / span);
+  if (recording) {
+    const armedIdx = P.tracks.findIndex((tr) => tr.id === P.armed);
+    const y = BEAT_H + Math.max(0, armedIdx) * TRACK_H;
+    const now = ctx.currentTime - recStartAt + recFrom;
+    const a = X(recFrom), b = Math.max(a, X(now));
+    g.fillStyle = 'rgba(239,68,68,0.22)'; g.fillRect(a, y + 1, b - a, TRACK_H - 1);
+    // the take as it goes down
+    const bins = recPeaks.length >> 1, sr = ctx.sampleRate;
+    if (bins) {
+      g.fillStyle = 'rgba(248,113,113,0.95)';
+      const mid = y + TRACK_H / 2, half = (TRACK_H - 26) / 2 * 0.92, perPx = (span / w) * sr / REC_BIN;
+      const x0 = Math.max(0, Math.floor(a)), x1 = Math.min(w, Math.ceil(a + bins / perPx));
+      for (let x = x0; x < x1; x++) {
+        const i0 = Math.max(0, Math.floor((x - a) * perPx)), i1 = Math.min(bins, Math.max(i0 + 1, Math.floor((x + 1 - a) * perPx)));
+        let mn = 0, mx = 0;
+        for (let i = i0; i < i1; i++) { if (recPeaks[i * 2] < mn) mn = recPeaks[i * 2]; if (recPeaks[i * 2 + 1] > mx) mx = recPeaks[i * 2 + 1]; }
+        g.fillRect(x, mid - mx * half, 1, Math.max(1, (mx - mn) * half));
+      }
+    }
+    g.fillStyle = '#ef4444'; g.fillRect(b, 0, 2, h);
+  } else {
+    g.fillStyle = '#ededf2'; g.fillRect(Math.round(X(currentPosition())), 0, 2, h);
+  }
+}
+let lastTotal = '';
 function drawTimeline() {
   const cv = $('timelineCanvas');
   if (!cv.clientWidth) return;
   const { g, w, h } = fitCanvas(cv);
   const sr = P.sr || 48000;
-  if (zoom > 1 && (playing || recording)) {
-    const v0 = view(), pos = recording ? ctx.currentTime - recStartAt + recFrom : currentPosition();
-    if (pos > v0.t0 + v0.span * 0.96 || pos < v0.t0) viewStart = pos - v0.span * 0.08;
-  }
+  followPlayhead();
   const { t0, span } = view();
   const pxPerSec = w / span;
   const X = (t) => (t - t0) * pxPerSec;
@@ -898,15 +1119,10 @@ function drawTimeline() {
     g.fillRect(Math.round(a), y + 1, 1, TRACK_H - 1); g.fillRect(Math.round(b), y + 1, 1, TRACK_H - 1);
     if (loopOn) g.fillRect(a, 0, b - a, 3);
   }
-  if (recording) {
-    const y = BEAT_H + Math.max(0, armedIdx) * TRACK_H;
-    const a = X(recFrom), b = Math.max(a, X(ctx.currentTime - recStartAt + recFrom));
-    g.fillStyle = 'rgba(239,68,68,0.25)'; g.fillRect(a, y + 1, b - a, TRACK_H - 1);
-    g.fillStyle = '#ef4444'; g.fillRect(b, 0, 2, h);
-  } else {
-    g.fillStyle = '#ededf2'; g.fillRect(Math.round(X(currentPosition())), 0, 2, h);
-  }
-  $('clockTotal').textContent = `/ ${fmtTime(projectDuration(), false)}`;
+  tlLayer = keepLayer(cv, tlLayer); tlKey = viewKey(cv);
+  timelineOverlay(g, w, h);
+  const total = `/ ${fmtTime(projectDuration(), false)}`;
+  if (total !== lastTotal) { $('clockTotal').textContent = total; lastTotal = total; }
 }
 
 // ---- pitch editor: what was sung, where it lands, and the notes as blocks you can pick up
@@ -1011,9 +1227,21 @@ function drawPitch() {
   // note names down the left edge
   g.fillStyle = 'rgba(10,10,15,0.72)'; g.fillRect(0, 0, 30, h);
   for (let m = lo; m <= hi; m++) if (allowed(m) && semi >= 9) { g.fillStyle = '#7d7d92'; g.fillText(D.midiName(m), 3, Y(m) + 3); }
-  const px = X(currentPosition());
-  if (px >= 0 && px <= w) { g.fillStyle = 'rgba(237,237,242,0.7)'; g.fillRect(Math.round(px), 0, 1, h); }
+  pitchLayer = keepLayer(cv, pitchLayer); pitchKey = viewKey(cv);
+  pitchPlayhead(g, w, h);
   $('btnResetNotes').hidden = !(isPro() && (P.tune.edits[t.id] || []).length);
+}
+function pitchPlayhead(g, w, h) {
+  const { t0, span } = view();
+  const px = ((currentPosition() - t0) / span) * w;
+  if (px >= 0 && px <= w) { g.fillStyle = 'rgba(237,237,242,0.7)'; g.fillRect(Math.round(px), 0, 1, h); }
+}
+// Every frame while playing: the pitch picture stays, only the playhead moves.
+function paintPitch() {
+  const cv = $('pitchCanvas');
+  if (!cv.clientWidth) return;
+  if (!pitchLayer || pitchKey !== viewKey(cv)) { drawPitch(); return; }
+  pitchPlayhead(putLayer(cv, pitchLayer), cv.clientWidth, cv.clientHeight);
 }
 function pitchHit(e) {
   const G = pitchGeom();
@@ -1439,7 +1667,7 @@ function renderTakes() {
 function updateBeatUi() {
   const bn = $('beatName'); if (bn) bn.textContent = P.beat ? P.beat.name : 'No beat loaded';
   const lead = clipsOf(leadTrack()).length > 0;
-  $('btnCheck').disabled = !mixCache;
+  $('btnCheck').disabled = !hasAudio();
   $('stackNeedsTake').hidden = lead;
   $('dropHint').hidden = !!P.beat;
   $('btnDetectKey').disabled = !P.beat;
@@ -1453,8 +1681,8 @@ function updateTransport() {
   btn.classList.toggle('playing', playing);
   btn.setAttribute('aria-label', playing ? 'Stop' : 'Play');
   btn.disabled = recording || !hasAudio();
-  $('btnExport').disabled = !mixCache || recording;
-  $('btnCheck').disabled = !mixCache || recording;
+  $('btnExport').disabled = !hasAudio() || recording;
+  $('btnCheck').disabled = !hasAudio() || recording;
   $('btnRewind').disabled = recording;
   if (!playing && !recording) $('clock').textContent = fmtTime(position);
   updateEditUi();
@@ -1672,6 +1900,7 @@ function bindControls() {
   $('presetSelect').addEventListener('change', (e) => applyPreset(e.target.value));
   $('btnPro').addEventListener('click', () => openPro());
   bindBeatMaker();
+  bindAudioSetup();
   $('btnCheck').addEventListener('click', runCheck);
   $('btnReleasePack').addEventListener('click', openRelease);
   $('releaseForm').addEventListener('submit', (e) => { e.preventDefault(); buildRelease(); });
@@ -1842,7 +2071,8 @@ function loadIntoUi(p) {
   zoom = 1; viewStart = 0; sel = null; loopOn = false; undoStack = []; redoStack = [];
   $('zoomOutLabel').textContent = 'Fit'; $('zoomOut').disabled = true;
   P.master = { ...DEFAULT_MASTER, ...P.master };
-  mixCache = null; position = 0; renderToken++; tuneToken++;
+  abortBounce(); cancelJobs('tune'); tuneBusy = false;
+  mixCache = null; position = 0; renderToken++; tuneToken++; tlLayer = null; pitchLayer = null;
   renderTracks(); syncControls(); renderTakes(); updateTransport(); drawTimeline(); drawPitch(); updateStats(); updateTuneStatus(); applyLive();
   if (P.beat || P.takes.length) { localStorage.setItem(LAST_KEY, P.id); scheduleTune(0); }
   else setRenderState('Load a beat or record a take to start.');
@@ -1893,27 +2123,15 @@ function onProChange() {
   if (P.beat || P.takes.length) scheduleTune(0);
 }
 
-// resolves once the mix on screen matches the current settings
-async function settled(timeout = 120000) {
-  const t0 = performance.now();
-  await new Promise((r) => setTimeout(r, 300));
-  while (performance.now() - t0 < timeout) {
-    const tuneDone = !P.tune.enabled || placedTakes().every((t) => tunedFor(t));
-    if (tuneDone && mixCache && mixCache.sig === renderSig()) return true;
-    await new Promise((r) => setTimeout(r, 150));
-  }
-  return false;
-}
-
 // ------------------------------------------------------------------ A&R365 record check
 async function runCheck() {
   if (!requirePro('The A&R365 record check', 'pro')) return;
-  if (!mixCache) return;
+  if (!hasAudio()) return;
   const dlg = $('checkDialog');
   $('checkScore').textContent = '–'; $('checkVerdict').textContent = 'Listening…'; $('checkList').textContent = '';
   if (!dlg.open) dlg.showModal();
   try {
-    await settled();
+    if (!(await ensureBounce()) || !mixCache) throw new Error('the mix could not be measured');
     // the check listens to the lead: the selected clip if it is on the lead track, else the first lead clip
     const leads = clipsOf(leadTrack());
     const t = leads.find((x) => x.id === P.activeTake) || leads[0] || null;
@@ -1949,7 +2167,7 @@ async function runCheck() {
       const fx = it.fix && fixes[it.fix];
       if (fx) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ghost small'; b.textContent = fx[0];
-        b.addEventListener('click', async () => { b.disabled = true; b.textContent = 'Fixing…'; await fx[1](); await settled(); runCheck(); });
+        b.addEventListener('click', async () => { b.disabled = true; b.textContent = 'Fixing…'; await fx[1](); runCheck(); });
         li.append(b);
       }
       $('checkList').append(li);
@@ -2007,7 +2225,7 @@ async function buildRelease() {
   const step = (p, text) => { bar.style.width = `${p}%`; msg.textContent = text; };
   try {
     step(5, 'Rendering the master…');
-    const channels = await renderFinal(false);
+    const channels = await renderFinal(false, (p) => { bar.style.width = `${5 + p * 20}%`; });
     const seconds = channels[0].length / P.sr;
     const base = slug(`${artist}-${title}`);
     const fullTitle = R.feat ? `${title} (feat. ${R.feat})` : title;
@@ -2038,7 +2256,7 @@ async function buildRelease() {
       `Length:           ${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`,
       P.beat ? `Tempo:            ${P.bpm} BPM` : null, `Key:              ${D.NOTE_NAMES[P.tune.root]} ${D.SCALE_LABELS[P.tune.scale].toLowerCase()}`,
       P.master.enabled && s && s.lufs != null ? `Loudness:         ${s.lufs.toFixed(1)} LUFS integrated, peak ${s.peakDb.toFixed(1)} dB` : 'Loudness:         Master was off for this export',
-      `Made:             ${new Date().toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })} in STUDIO365`,
+      `Made:             ${new Date().toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' })} in HSW365studio`,
       '', 'FILES IN THIS PACK', '------------------',
       ...files.map((f) => `  ${f.name}`), '  release-sheet.txt',
       '', 'WHICH FILE GOES WHERE', '---------------------',
@@ -2052,7 +2270,7 @@ async function buildRelease() {
       '  [ ] No uncleared samples.',
       '  [ ] Cover art has no logos, web addresses or other people\'s brands on it.',
       '  [ ] Pick a release date at least a week out so stores have time to list it.',
-      '', 'Your music is yours. STUDIO365 claims no rights to anything you record.', '',
+      '', 'Your music is yours. HSW365studio claims no rights to anything you record.', '',
     ].filter((l) => l !== null).join('\r\n');
     files.push({ name: 'release-sheet.txt', bytes: new TextEncoder().encode(sheet) });
     step(96, 'Packing the ZIP…');
@@ -2092,16 +2310,18 @@ function download(data, name, type) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 // Full-quality render of what you hear. stem = the processed vocal (and stack) alone.
-async function renderFinal(stem = false) {
+async function renderFinal(stem = false, onProgress = null) {
+  stopPlayback(true);
+  abortBounce();
   const layers = await buildLayers();
   let channels;
   if (stem) {
     if (!placedTakes().length) throw new Error('Record or import a take first. The stem is your vocals alone.');
-    channels = await renderMix({ sr: P.sr, beat: null, ...mixClips(), mix: P.mix, bpm: P.bpm, vocalOnly: true, layers });
+    channels = await renderMix({ sr: P.sr, beat: null, ...mixClips(), mix: P.mix, bpm: P.bpm, vocalOnly: true, layers, onProgress });
     const pk = D.peak(channels);
     if (pk > 0) { const g = D.dbToGain(-1) / pk; channels.forEach((c) => { for (let i = 0; i < c.length; i++) c[i] *= g; }); }
   } else {
-    channels = await renderMix({ sr: P.sr, beat: P.beat ? P.beat.channels : null, ...mixClips(), mix: P.mix, bpm: P.bpm, layers });
+    channels = await renderMix({ sr: P.sr, beat: P.beat ? P.beat.channels : null, ...mixClips(), mix: P.mix, bpm: P.bpm, layers, onProgress });
     if (P.master.enabled) {
       const r = await work('master', { channels, sr: P.sr, target: P.master.target, ceiling: P.master.ceiling }, channels.map((c) => c.buffer));
       channels = r.channels;
@@ -2118,7 +2338,7 @@ async function exportAs(format) {
   opts.forEach((b) => { b.disabled = true; });
   prog.hidden = false; bar.style.width = '5%'; msg.textContent = 'Rendering full quality…';
   try {
-    const channels = await renderFinal(format === 'stem');
+    const channels = await renderFinal(format === 'stem', (p) => { bar.style.width = `${5 + p * 45}%`; msg.textContent = `Rendering full quality… ${Math.round(p * 100)}%`; });
     bar.style.width = '55%';
     const base = slug(P.name);
     if (format === 'wav24' || format === 'stem') {
@@ -2180,6 +2400,7 @@ async function boot() {
   const linkToast = (r) => toast(r.ok ? `Your plan is on until ${new Date(r.expires).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}. Welcome in.` : r.reason, !r.ok);
   initPro({ onChange: onProChange, onLink: linkToast }).then(({ fromLink }) => { if (fromLink) linkToast(fromLink); });
   syncControls();
+  renderTracks();
   renderTakes();
   updateTransport();
   drawTimeline();

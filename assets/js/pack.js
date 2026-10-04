@@ -1,4 +1,4 @@
-// File builders for STUDIO365: ZIP (stored, no compression), ID3 tags for MP3, cover art sizing,
+// File builders for HSW365studio: ZIP (stored, no compression), ID3 tags for MP3, cover art sizing,
 // and the .studio365 session backup format. No dependencies.
 
 // ---------------------------------------------------------------- CRC32 + ZIP
@@ -65,7 +65,7 @@ export function tagMp3(mp3, tags) {
   const frames = [];
   const put = (id, v) => { if (v != null && String(v).trim()) frames.push(textFrame(id, String(v).trim())); };
   put('TIT2', tags.title); put('TPE1', tags.artist); put('TALB', tags.album); put('TCON', tags.genre);
-  put('TYER', tags.year); put('TBPM', tags.bpm); put('TKEY', tags.key); put('TSSE', 'STUDIO365');
+  put('TYER', tags.year); put('TBPM', tags.bpm); put('TKEY', tags.key); put('TSSE', 'HSW365studio');
   if (tags.coverJpeg) {
     const mime = new TextEncoder().encode('image/jpeg');
     const b = new Uint8Array(1 + mime.length + 1 + 1 + 1 + tags.coverJpeg.length);
@@ -106,7 +106,7 @@ export function packSession(P) {
   let offset = 0;
   const ref = (arr) => { const r = { o: offset, n: arr.length }; bufs.push(new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength)); offset += arr.byteLength; return r; };
   const head = {
-    v: 1, app: 'STUDIO365', saved: Date.now(),
+    v: 1, app: 'HSW365studio', saved: Date.now(),
     project: {
       id: P.id, name: P.name, created: P.created, updated: P.updated, sr: P.sr, bpm: P.bpm, key: P.key,
       activeTake: P.activeTake, tracks: P.tracks, armed: P.armed, tune: P.tune, mix: P.mix, master: P.master, stack: P.stack, preset: P.preset || '', release: P.release || null,
@@ -122,7 +122,7 @@ export function packSession(P) {
 export async function unpackSession(file) {
   const buf = await file.arrayBuffer();
   const magic = new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(MAGIC.length, buf.byteLength)));
-  if (magic !== MAGIC) throw new Error("That isn't a STUDIO365 session file. Pick a file ending in .studio365.");
+  if (magic !== MAGIC) throw new Error("That isn't a HSW365studio session file. Pick a file ending in .studio365.");
   const jsonLen = new DataView(buf).getUint32(MAGIC.length, true);
   const start = MAGIC.length + 4;
   const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, start, jsonLen)));

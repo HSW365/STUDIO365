@@ -1,4 +1,4 @@
-/* STUDIO365 marketing site */
+/* HSW365studio marketing site */
 body.site { overflow-x: hidden; }
 .skip { position: absolute; left: -9999px; top: 8px; background: var(--cyan); color: #04141a; padding: 8px 14px; border-radius: 6px; z-index: 100; }
 .skip:focus { left: 8px; }

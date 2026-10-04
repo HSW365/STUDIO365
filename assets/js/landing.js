@@ -1,4 +1,4 @@
-// STUDIO365 landing: live A/B pitch-correction demo, Pro checkout, nav state.
+// HSW365studio landing: live A/B pitch-correction demo, Pro checkout, nav state.
 import { initPro, openPro, planName } from './pro.js';
 const $ = (id) => document.getElementById(id);
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];

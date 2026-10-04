@@ -1,4 +1,4 @@
-// STUDIO365 beat maker. Generates an ORIGINAL beat in a chosen key, tempo and style: its own drums, bass,
+// HSW365studio beat maker. Generates an ORIGINAL beat in a chosen key, tempo and style: its own drums, bass,
 // chords and melody, synthesized from scratch in the browser. It never copies notes from another recording.
 import { SCALES, midiToFreq, dbToGain } from './dsp.js';
 

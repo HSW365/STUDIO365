@@ -1,4 +1,4 @@
-# STUDIO365 by HSW365
+# HSW365studio
 
 Record it tonight. Release it tonight.
 
@@ -14,7 +14,9 @@ A full vocal studio that runs in the browser: record over a beat, pitch-correct 
 
 ### Studio features (all working, all client-side)
 
-- **Record** over a beat with sample-accurate AudioWorklet capture, count-in, click track, mic monitoring, input meter, latency compensation, punch-in from the playhead. Unlimited takes.
+- **Record** over a beat with sample-accurate AudioWorklet capture, count-in, click track, mic monitoring, input meter, latency compensation, punch-in from the playhead. The take draws on the timeline as it goes down. Unlimited takes.
+- **Audio setup**: pick the microphone, and pick the audio buffer (fastest, balanced, most stable) for the computer it runs on.
+- **Transport**: play starts at once and never waits for a render. Loops come round on the exact sample. The song stops at the end even when the tab is in the background.
 - **Beat maker**: writes and synthesizes an original beat (trap, drill, boom bap, R&B, melodic) in a chosen key, tempo and length. With a beat loaded it starts from that beat's key and tempo so an existing vocal still fits. It generates new drums, bass, chords and melody; it does not copy another recording's notes.
 - **Import** beats and vocal files (MP3, WAV, M4A, FLAC, OGG); drag and drop onto the timeline.
 - **Key and tempo detection** from the beat (chroma + Krumhansl profiles, onset autocorrelation).
@@ -27,7 +29,7 @@ A full vocal studio that runs in the browser: record over a beat, pitch-correct 
 - **Editing**: drag to select part of the take, then trim, cut out, silence, fade in, fade out, clip gain, normalize, reverse, or lift the selection to a new take. Move the take against the beat, zoom the timeline, loop a selection. Undo and redo.
 - **Master**: ITU-R BS.1770 integrated loudness to -14 / -9 / -16 LUFS, lookahead brickwall limiter at -1 dB.
 - **Export**: 24-bit WAV master, MP3 320, MP3 128 (lamejs), processed vocal stem.
-- **Sessions** autosave to IndexedDB (audio included) and reopen on return.
+- **Sessions** autosave to IndexedDB and reopen on return. Settings and audio are stored apart, so a fader move saves a few kilobytes and each piece of audio is written once.
 - Shortcuts: Space play/stop, R record, L loop, Ctrl+Z undo, Ctrl+Shift+Z redo, Delete silences the selection, + and - zoom.
 
 ### Pro (paid with Cash App)
@@ -68,7 +70,7 @@ index.html  studio.html  admin.html  config.js  supabase.sql
 assets/css/   base.css  site.css  studio.css  console.css  pro.css
 assets/js/    dsp.js (engine)  dsp-worker.js  mixer.js (console signal path)  console.js (strips, meters, EQ)
               strip-worklet.js (compressor, de-esser, limiter)  edit.js  check.js  presets.js  pack.js  store.js
-              recorder-worklet.js  studio.js  landing.js  license.js  pro.js  admin.js
+              recorder-worklet.js  jobs.js (background workers)  dsp-jobs.js  studio.js  landing.js  license.js  pro.js  admin.js
 assets/img/   favicon.svg  og.png
 render.yaml   Render static-site blueprint
 ```
@@ -83,6 +85,12 @@ Any static host works. It must be served over https (the mic and Pro keys need i
 ## Payment notices table (optional)
 
 Without Supabase, "I paid. Send my key" opens the customer's email app addressed to `CONTACT_EMAIL`. To log notices in a table instead, run the `studio365_pro_requests` block at the bottom of `supabase.sql` and put the project URL and anon/publishable key in `config.js`.
+
+## How the engine works
+
+- What you hear is the live console (`mixer.js` built on the browser's audio engine). Every control lands on it at once.
+- A full offline bounce is only used to measure the finished record (loudness, peak, the record check) and to export. The measuring bounce runs in the background when the transport is stopped and the mix has been left alone, and is cancelled the moment you play, record or change something.
+- Tuning, mastering and analysis run in two background workers (`jobs.js`). A job that has been overtaken by a newer setting is stopped, not queued.
 
 ## Scope notes
 

@@ -1,4 +1,4 @@
-// STUDIO365 Pro keys. A key is a small signed note: who it is for and when it runs out.
+// HSW365studio Pro keys. A key is a small signed note: who it is for and when it runs out.
 // The site only holds the PUBLIC key, so it can check a key but nobody can forge one from the page source.
 // Format: S365-<base64url(JSON payload)>.<base64url(ECDSA P-256 / SHA-256 signature)>
 const cfg = (typeof window !== 'undefined' && window.STUDIO365_CONFIG) || {};
@@ -32,7 +32,7 @@ export function extractKey(text) {
 // Returns { ok, email, expires (ms), issued (ms), reason }
 export async function verifyKey(text, publicJwk = cfg.LICENSE_PUBLIC_KEY, now = Date.now()) {
   const key = extractKey(text);
-  if (!key) return { ok: false, reason: "That doesn't look like a STUDIO365 key. Paste the whole key, starting with S365-." };
+  if (!key) return { ok: false, reason: "That doesn't look like a HSW365studio key. Paste the whole key, starting with S365-." };
   if (!publicJwk || !publicJwk.x) return { ok: false, reason: 'Pro keys are not set up on this site yet.' };
   if (!globalThis.crypto?.subtle) return { ok: false, reason: 'This page needs a secure (https) connection to check your key.' };
   try {

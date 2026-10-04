@@ -1,7 +1,7 @@
 // PUBLIC VALUES ONLY. Everything in this file is visible to anyone who opens the site.
 // Never put the owner key file, Supabase service-role keys, or any other secret here.
 window.STUDIO365_CONFIG = {
-  PRODUCT_NAME: "STUDIO365",
+  PRODUCT_NAME: "HSW365studio",
   CONTACT_EMAIL: "hsw365media@gmail.com",
 
   // ---- Plans, sold on the Shopify store --------------------------------------------

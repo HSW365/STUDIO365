@@ -1,4 +1,4 @@
-/* STUDIO365 Pro: checkout sheet, Pro tags, shared by the landing page and the studio */
+/* HSW365studio Pro: checkout sheet, Pro tags, shared by the landing page and the studio */
 .pro-sheet {
   border: 1px solid rgba(168,85,247,.45); border-radius: 22px; padding: 0; color: var(--text);
   background: radial-gradient(110% 60% at 100% 0%, rgba(168,85,247,.2), transparent 60%), var(--panel);

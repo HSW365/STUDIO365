@@ -1,4 +1,4 @@
-/* STUDIO365 console, editing tools and pitch editor */
+/* HSW365studio console, editing tools and pitch editor */
 
 /* ---- shared: segmented buttons ---- */
 .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: var(--r-s); overflow: hidden; }

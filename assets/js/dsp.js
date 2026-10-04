@@ -1,4 +1,4 @@
-// STUDIO365 DSP core — pure functions, no DOM. Runs in the browser and in Node (tests).
+// HSW365studio DSP core — pure functions, no DOM. Runs in the browser and in Node (tests).
 // Pitch detection (YIN), scale-aware pitch correction (WSOLA-aligned granular shifter),
 // key detection (chroma + Krumhansl profiles), ITU-R BS.1770 loudness, lookahead limiter, WAV encoding.
 

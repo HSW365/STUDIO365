@@ -1,4 +1,4 @@
-// STUDIO365 Pro: Cash App checkout and key activation. Shared by the landing page and the studio.
+// HSW365studio Pro: Cash App checkout and key activation. Shared by the landing page and the studio.
 import * as License from './license.js';
 
 const cfg = window.STUDIO365_CONFIG || {};
@@ -77,7 +77,7 @@ function build() {
   <dialog class="pro-sheet" aria-labelledby="proTitle">
     <form method="dialog" class="pro-head">
       <div>
-        <p class="pro-eyebrow" id="proEyebrow">STUDIO365 plans</p>
+        <p class="pro-eyebrow" id="proEyebrow">HSW365studio plans</p>
         <h2 id="proTitle">Pick a plan</h2>
       </div>
       <button class="pro-x" aria-label="Close" value="close">✕</button>

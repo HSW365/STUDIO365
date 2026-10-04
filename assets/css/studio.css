@@ -1,4 +1,4 @@
-/* STUDIO365 studio workspace */
+/* HSW365studio studio workspace */
 body.studio { min-height: 100vh; display: flex; flex-direction: column; background: var(--ink); }
 
 .topbar {
@@ -326,3 +326,6 @@ body.studio { min-height: 100vh; display: flex; flex-direction: column; backgrou
 /* beat maker */
 .beat-form { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .beat-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+
+/* loudness numbers from before the last change, until the mix is measured again */
+.stats.stale b { opacity: .45; }
