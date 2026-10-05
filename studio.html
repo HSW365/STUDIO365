@@ -48,7 +48,7 @@
     </div>
     <nav class="topbar-actions">
       <button class="btn ghost" id="btnAudio" type="button" title="Choose your microphone and audio buffer">Audio</button>
-      <button class="btn ghost" id="btnLibrary" type="button">Sessions</button>
+      <button class="btn ghost" id="btnLibrary" type="button">Session<svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M0 0l5 6 5-6z"/></svg></button>
       <button class="btn ghost" id="btnNew" type="button">New session</button>
       <button class="btn primary" id="btnExport" type="button" disabled>Export</button>
       <button class="btn pro" id="btnPro" type="button">Plans</button>
@@ -358,6 +358,8 @@
       <div class="render-state" id="renderState" aria-live="polite"></div>
     </aside>
   </main>
+
+  <div class="menu" id="sessionMenu" role="menu" aria-label="Session" hidden></div>
 
   <dialog id="libraryDialog" class="sheet">
     <form method="dialog" class="sheet-head"><h2>Sessions on this device</h2><button class="icon-btn" aria-label="Close" value="close">✕</button></form>

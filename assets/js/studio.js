@@ -67,9 +67,22 @@ function audio() {
     ctx = new AC({ latencyHint: latencyHint() });
     const mine = ctx;
     // the sound card went away (unplugged, computer slept): stop cleanly instead of sitting there silent
+    // The sound card blinked (headphones switched mode, a device was plugged in, the computer slept).
+    // Most of these come straight back, so ask for the sound again and only stop if it stays away.
+    let comeback = null;
     ctx.addEventListener('statechange', () => {
-      if (ctx !== mine || mine.state === 'running' || mine.state === 'closed') return;
-      if (playing) { stopPlayback(true); toast('Sound was interrupted by your computer. Press Play to carry on.', true); }
+      if (ctx !== mine || mine.state === 'closed') return;
+      if (mine.state === 'running') { clearTimeout(comeback); comeback = null; return; }
+      if (!playing || comeback) return;
+      mine.resume().catch(() => { /* retried below */ });
+      const started = performance.now();
+      const check = () => {
+        comeback = null;
+        if (ctx !== mine || mine.state === 'running' || !playing) return;
+        if (performance.now() - started < 4000) { mine.resume().catch(() => {}); comeback = setTimeout(check, 400); return; }
+        stopPlayback(true); toast('Sound was interrupted by your computer. Press Play to carry on.', true);
+      };
+      comeback = setTimeout(check, 400);
     });
   }
   if (ctx.state !== 'running') ctx.resume().catch(() => { /* needs a click first */ });
@@ -291,6 +304,89 @@ async function save() {
     $('saveState').textContent = 'Not saved';
     toast("This session couldn't be saved. Your browser may be out of storage space. Export your mix to keep it.", true);
   }
+}
+
+async function saveNow() {
+  clearTimeout(saveTimer);
+  if (!hasAudio() && P.name === 'Untitled session') { toast('Nothing to save yet. Load a beat or record a take first.'); return; }
+  await save();
+  if ($('saveState').textContent === 'Saved on this device') toast(`"${P.name}" is saved on this device.`);
+}
+
+// ------------------------------------------------------------------ session menu
+// New, Save, Save a copy, Rename, Recent, All sessions, Delete: the File menu of the studio.
+function bindSessionMenu() {
+  const menu = $('sessionMenu'), btn = $('btnLibrary');
+  const close = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  const item = (label, hint, fn, cls = '') => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = `menu-item ${cls}`; b.setAttribute('role', 'menuitem');
+    const l = document.createElement('span'); l.textContent = label; b.append(l);
+    if (hint) { const h = document.createElement('small'); h.textContent = hint; b.append(h); }
+    b.addEventListener('click', () => { close(); fn(); });
+    return b;
+  };
+  const head = (text) => { const h = document.createElement('p'); h.className = 'menu-head'; h.textContent = text; return h; };
+  const openSession = async (id) => {
+    if (recording) return;
+    stopPlayback(false); clearTimeout(saveTimer); await save();
+    const full = await Store.loadProject(id);
+    if (full) loadIntoUi(full); else toast("That session couldn't be opened.", true);
+  };
+  const build = async () => {
+    menu.textContent = '';
+    menu.append(
+      item('New session', '', () => $('btnNew').click()),
+      item('Save', 'Ctrl+S', saveNow),
+      item('Save a copy', '', saveCopy),
+      item('Rename', '', () => { const n = $('projectName'); n.focus(); n.select(); }),
+    );
+    let all = [];
+    try { all = await Store.listProjects(); } catch { /* storage unavailable */ }
+    const recent = all.filter((p) => p.id !== P.id).slice(0, 5);
+    if (recent.length) {
+      menu.append(head('Recent'));
+      for (const p of recent) menu.append(item(p.name, new Date(p.updated).toLocaleDateString([], { month: 'short', day: 'numeric' }), () => openSession(p.id), 'recent'));
+    }
+    menu.append(head('Manage'), item('All sessions…', all.length ? String(all.length) : '', openLibrary), item('Delete this session', '', deleteCurrent, 'danger'));
+  };
+  btn.setAttribute('aria-haspopup', 'menu'); btn.setAttribute('aria-expanded', 'false');
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!menu.hidden) { close(); return; }
+    await build();
+    const r = btn.getBoundingClientRect();
+    menu.style.top = `${r.bottom + 8}px`;
+    menu.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
+    menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    menu.querySelector('.menu-item')?.focus();
+  });
+  document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { close(); btn.focus(); } });
+  window.addEventListener('resize', close);
+}
+async function saveCopy() {
+  if (recording) return;
+  if (!hasAudio()) { toast('Nothing to copy yet. Load a beat or record a take first.'); return; }
+  stopPlayback(false); clearTimeout(saveTimer); await save();
+  const original = P;
+  // the copy starts as its own session; the audio is shared in memory and written once under the new session
+  const copy = { ...structuredClone({ ...P, beat: null, takes: [], cover: null, tuned: null }), id: uid(), name: `${P.name} copy`.slice(0, 80), created: Date.now(), updated: Date.now(),
+    beat: P.beat ? { ...P.beat } : null, takes: P.takes.map((t) => ({ ...t })), cover: P.cover ? { ...P.cover, id: null } : null };
+  loadIntoUi(copy);
+  if (!canWork()) { loadIntoUi(original); return; }
+  await save();
+  toast(`You are now in "${copy.name}". The original is saved under Sessions.`);
+}
+async function deleteCurrent() {
+  if (recording) return;
+  if (!hasAudio()) { toast('This session is empty. There is nothing to delete.'); return; }
+  if (!confirm(`Delete "${P.name}" and all its takes? This can't be undone.`)) return;
+  stopPlayback(false); clearTimeout(saveTimer);
+  const id = P.id, name = P.name;
+  try { await Store.deleteProject(id); } catch (err) { toast(`Couldn't delete it: ${err.message}`, true); return; }
+  try { if (localStorage.getItem(LAST_KEY) === id) localStorage.removeItem(LAST_KEY); } catch { /* private mode */ }
+  loadIntoUi(newProject());
+  toast(`"${name}" is deleted.`);
 }
 
 // ------------------------------------------------------------------ tuning
@@ -533,7 +629,7 @@ async function startPlayback(from = position) {
   killSources();
   let G, layers;
   try {
-    if (c.state !== 'running') await Promise.race([c.resume(), new Promise((r) => setTimeout(r, 1500))]);
+    if (c.state !== 'running') await Promise.race([c.resume(), new Promise((r) => setTimeout(r, 5000))]);
     if (token !== playToken) return;
     // the sound card never came back: start a fresh audio engine rather than sit there silent
     if (c.state !== 'running') { await rebuildAudio(); token = ++playToken; }
@@ -1954,11 +2050,13 @@ function bindControls() {
   window.addEventListener('keydown', (e) => {
     const tag = (e.target.tagName || '').toLowerCase();
     if (['input', 'select', 'textarea'].includes(tag) && !(tag === 'input' && ['range', 'radio', 'checkbox'].includes(e.target.type))) return;
-    if (tag === 'button' && (e.code === 'Space' || e.key === 'Enter')) return;   // those press the button itself
+    if (tag === 'button' && e.key === 'Enter') return;   // Enter presses the button itself
+    if (tag === 'button' && e.code === 'Space') e.target.blur();   // Space is always play and stop, never the last button clicked
     if (document.querySelector('dialog[open]')) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (!recording) (e.shiftKey ? redo() : undo()); return; }
     if (mod && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); if (!recording) redo(); return; }
+    if (mod && (e.key === 's' || e.key === 'S')) { e.preventDefault(); saveNow(); return; }
     if (mod && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); applyEdit('copy'); return; }
     if (mod && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); applyEdit('paste'); return; }
     if (mod && (e.key === 'x' || e.key === 'X')) { e.preventDefault(); applyEdit('copy'); applyEdit(sel ? 'remove' : 'delete'); return; }
@@ -1976,7 +2074,7 @@ function bindControls() {
   });
 
   // sessions
-  $('btnLibrary').addEventListener('click', openLibrary);
+  bindSessionMenu();
   $('btnNew').addEventListener('click', async () => {
     if (recording) return;
     stopPlayback(false);

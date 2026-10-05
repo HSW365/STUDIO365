@@ -329,3 +329,22 @@ body.studio { min-height: 100vh; display: flex; flex-direction: column; backgrou
 
 /* loudness numbers from before the last change, until the mix is measured again */
 .stats.stale b { opacity: .45; }
+
+/* session menu */
+#btnNew { display: none; }
+.btn .caret { width: 9px; height: 6px; fill: currentColor; opacity: .7; }
+.menu {
+  position: fixed; z-index: 40; min-width: 250px; max-width: min(320px, calc(100vw - 16px)); padding: 6px;
+  background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.6);
+}
+.menu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 10px 12px;
+  background: none; border: 0; border-radius: 8px; color: var(--text); font-size: 14px; font-weight: 500; text-align: left; cursor: pointer;
+}
+.menu-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-item small { flex: none; font: 400 11px var(--mono); color: var(--muted); }
+.menu-item:hover, .menu-item:focus-visible { background: rgba(255,255,255,.06); outline: none; }
+.menu-item.recent { font-weight: 400; color: var(--text-2); }
+.menu-item.danger { color: #fca5a5; }
+.menu-item.danger:hover { background: var(--red-dim); }
+.menu-head { margin: 8px 12px 4px; padding-top: 8px; border-top: 1px solid var(--line); font: 700 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
