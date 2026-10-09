@@ -15,6 +15,14 @@ window.STUDIO365_CONFIG = {
     { id: "pro", name: "Pro", price: 25, variant: "47998395809953", blurb: "Adds the A&R365 record check, release packs and session backups." }
   ],
 
+  // ---- AI Song ------------------------------------------------------------------------
+  // The address of the AI Song service (supabase/functions/studio365-ai). Leave empty and AI Song says it is
+  // being switched on. AI_PLAN is the lowest plan that includes it; AI_SONGS_PER_MONTH is only what the page
+  // tells people. The real limits are set on the service (AI_MIN_PLAN, AI_SONGS_PER_MONTH).
+  AI_API_URL: "",
+  AI_PLAN: "pro",
+  AI_SONGS_PER_MONTH: 10,
+
   // ---- Older Cash App checkout (no longer shown on the site) -------------------------------------------
   // Change a price here and it updates the landing page, the studio and the checkout.
   CASHTAG: "$hsw365",

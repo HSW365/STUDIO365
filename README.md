@@ -41,6 +41,24 @@ A full vocal studio that runs in the browser: record over a beat, pitch-correct 
 - **Release pack**: one ZIP with 24-bit master, 16-bit 44.1 kHz master, tagged MP3 320 with cover, 3000 px cover and a release sheet.
 - **Session backup**: save a whole session to a `.studio365` file and open it on another computer.
 
+### AI Song (Pro)
+
+- **Create**: say what the song is about, pick the sound, feel, voice and length, and the song is written (parts, styles and lyrics) or set up from the member's own lyrics.
+- **Edit**: every part is on the page before the song is made. Rename, reorder, repeat or remove parts, set how long each runs, rewrite any line, set the sound of one part or the whole song. Change it and make it again any time.
+- **Into the studio**: open the song on the beat track, or with the vocal on a vocal track and the music on the beat track, then tune, mix, re-record and master it like any session.
+- **My songs**: every song is kept on the device with its parts and words.
+
+The music model cannot run in the browser, so AI Song has one small server piece: `supabase/functions/studio365-ai`. It holds the model key, checks the member's plan key (same signed `S365-` key, checked again on the server), and counts songs per member per month in `studio365_ai_usage`.
+
+To switch it on:
+
+1. Run the `studio365_ai_usage` block at the bottom of `supabase.sql` in the Supabase project.
+2. Deploy the function `studio365-ai` with JWT verification off (it checks the plan key itself).
+3. Add the secret `ELEVENLABS_API_KEY`. Optional: `AI_MIN_PLAN` (default `pro`), `AI_SONGS_PER_MONTH` (default 10), `AI_STEMS_PER_MONTH`, `AI_MAX_SECONDS` (default 240), `AI_OWNER_EMAILS`, `AI_ALLOWED_ORIGINS`.
+4. Put the function address in `config.js` as `AI_API_URL`. Keep `AI_PLAN` and `AI_SONGS_PER_MONTH` there the same as the secrets; they are only what the page tells people.
+
+Every song costs model credits on the owner's account, which is why songs are counted. Owner emails are not counted.
+
 ## Plans and checkout
 
 The first 3 projects on a device are free (`FREE_PROJECTS` in `config.js`). After that a plan is needed to put audio into a new project. Three plans, each including the one before it, sold as one-month purchases on the Shopify store (hsw365.co):
@@ -49,9 +67,9 @@ The first 3 projects on a device are free (`FREE_PROJECTS` in `config.js`). Afte
 | --- | --- | --- |
 | Starter | $15 | Unlimited projects, the full studio |
 | Plus | $20 | Tune Pro, vocal stacks and harmonies, six more presets |
-| Pro | $25 | A&R365 record check, release pack, session backup |
+| Pro | $25 | AI Song, A&R365 record check, release pack, session backup |
 
-There is no server. A key is a short signed note (email, plan, end date). The site holds only the public half of the signing key, so it can check a key but nobody can make one from the page source.
+The studio itself has no server (AI Song is the one exception, above). A key is a short signed note (email, plan, end date). The site holds only the public half of the signing key, so it can check a key but nobody can make one from the page source.
 
 1. A customer buys a plan on Shopify. The order shows their email and which plan.
 2. You open **`admin.html`** (the key maker), load `studio365-owner-key.json` once, type their email, pick the plan and press **Make key**.
@@ -67,10 +85,11 @@ Things to know:
 
 ```
 index.html  studio.html  admin.html  config.js  supabase.sql
-assets/css/   base.css  site.css  studio.css  console.css  pro.css
+assets/css/   base.css  site.css  studio.css  console.css  pro.css  aisong.css
 assets/js/    dsp.js (engine)  dsp-worker.js  mixer.js (console signal path)  console.js (strips, meters, EQ)
               strip-worklet.js (compressor, de-esser, limiter)  edit.js  check.js  presets.js  pack.js  store.js
-              recorder-worklet.js  jobs.js (background workers)  dsp-jobs.js  studio.js  landing.js  license.js  pro.js  admin.js
+              recorder-worklet.js  jobs.js (background workers)  dsp-jobs.js  studio.js  landing.js  license.js  pro.js  admin.js  aisong.js
+supabase/functions/studio365-ai/   the AI Song service
 assets/img/   favicon.svg  og.png
 render.yaml   Render static-site blueprint
 ```

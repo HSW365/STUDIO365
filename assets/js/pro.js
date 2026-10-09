@@ -29,6 +29,7 @@ export const planName = () => { const pl = PLANS.find((x) => x.id === planId());
 export const hasPlan = (need = 'plus') => !!state.pro && RANK[state.plan || 'pro'] >= (RANK[need] || 2);
 export const isPro = () => hasPlan('plus');                      // the creative extras: Tune Pro, stacks, presets
 export const proStatus = () => state;
+export const planKey = () => (state.pro ? License.savedKey() : null);  // sent to the AI Song service, which checks it itself
 export const prices = { monthly: PRICE, first: FIRST, cashtag: CASHTAG };
 export const cashLink = (amt) => `https://cash.app/${encodeURIComponent(CASHTAG).replace('%24', '$')}/${amt}`;
 export const buyLink = (pl) => (pl.variant ? `https://hsw365.co/cart/${pl.variant}:1` : cfg.SHOP_PRODUCT_URL || 'https://hsw365.co');

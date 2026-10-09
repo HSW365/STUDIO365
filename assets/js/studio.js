@@ -10,6 +10,7 @@ import { PRESETS } from './presets.js';
 import * as Pack from './pack.js';
 import { work, cancelJobs, isCancel } from './jobs.js';
 import { makeBeat, BEAT_STYLES } from './beatmaker.js';
+import { initAiSong, openAiSong, refreshAiSong } from './aisong.js';
 
 const $ = (id) => document.getElementById(id);
 const DEFAULT_TUNE = { enabled: true, root: 9, scale: 'minor', speedMs: 15, amount: 100, keepVibrato: 30, humanize: 0, flex: 0, glideMs: 0, transpose: 0, formant: 0, detune: 0, mask: null, edits: {} };
@@ -2082,6 +2083,21 @@ function bindControls() {
     loadIntoUi(newProject());
     toast('New session started. Your last one is saved under Sessions.');
   });
+  // AI Song: a finished song comes in as the beat, or as music on the beat track and the vocal on a vocal track.
+  initAiSong({
+    hasAudio: () => !!(P.beat || P.takes.length),
+    openSong: async ({ title, music, vocal }) => {
+      if (recording) throw new Error('Stop recording first.');
+      stopPlayback(false);
+      if (P.beat || P.takes.length) { await save(); loadIntoUi(newProject()); }
+      P.name = title; $('projectName').value = title;
+      await loadBeat(music);
+      if (!P.beat) throw new Error('The song could not be loaded into the studio.');
+      if (vocal) await importVocal(vocal);
+      toast(vocal ? 'Your song is open. The vocal is on track 1 and the music is on the beat track.' : 'Your song is open on the beat track. Hit Record to add your own vocal.');
+    },
+  });
+  $('btnAiSong').addEventListener('click', openAiSong);
   $('btnExport').addEventListener('click', () => {
     $('exportProgress').hidden = true;
     const names = { vocal: 'the vocal', stack: 'the stack', beat: 'the beat', rev: 'the reverb', delay: 'the echo' };
@@ -2217,7 +2233,7 @@ function onProChange() {
   b.textContent = isMember() ? planName() : 'Plans';
   b.classList.toggle('on', isMember());
   b.title = isMember() ? `Your ${planName()} plan` : `First ${FREE_PROJECTS} projects free. Plans from $15 a month.`;
-  updateBeatUi(); renderKeys();
+  updateBeatUi(); renderKeys(); refreshAiSong();
   if (P.beat || P.takes.length) scheduleTune(0);
 }
 

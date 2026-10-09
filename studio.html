@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="assets/css/studio.css">
   <link rel="stylesheet" href="assets/css/console.css">
   <link rel="stylesheet" href="assets/css/pro.css">
+  <link rel="stylesheet" href="assets/css/aisong.css?v=20261009">
   <script>
     // If anything breaks, say so on screen instead of leaving dead buttons.
     (function () {
@@ -47,6 +48,7 @@
       <span id="saveState" class="save-state" aria-live="polite">Saved on this device</span>
     </div>
     <nav class="topbar-actions">
+      <button class="btn ai" id="btnAiSong" type="button" title="Describe a song and have it written, sung and played. Then change it or open it in the studio."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg><span>AI Song</span></button>
       <button class="btn ghost" id="btnAudio" type="button" title="Choose your microphone and audio buffer">Audio</button>
       <button class="btn ghost" id="btnLibrary" type="button">Session<svg class="caret" viewBox="0 0 10 6" aria-hidden="true"><path d="M0 0l5 6 5-6z"/></svg></button>
       <button class="btn ghost" id="btnNew" type="button">New session</button>
@@ -465,6 +467,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js" defer></script>
   <script src="config.js"></script>
-  <script type="module" src="assets/js/studio.js?v=20261003"></script>
+  <script type="module" src="assets/js/studio.js?v=20261009"></script>
 </body>
 </html>

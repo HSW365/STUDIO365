@@ -50,3 +50,18 @@ create table if not exists studio365_pro_requests(
 alter table studio365_pro_requests enable row level security;
 drop policy if exists pro_requests_insert on studio365_pro_requests;
 create policy pro_requests_insert on studio365_pro_requests for insert to anon, authenticated with check (true);
+
+-- HSW365studio AI Song: one row per song made or vocal/music split, used to count each member's month.
+-- Only the AI Song service (service role) reads and writes it; the public API cannot.
+create table if not exists studio365_ai_usage(
+  id uuid primary key default gen_random_uuid(),
+  email text not null check (length(email) <= 254),
+  kind text not null check (kind in ('song', 'stems')),
+  plan text check (length(plan) <= 20),
+  month text not null check (month ~ '^[0-9]{4}-[0-9]{2}$'),
+  seconds int,
+  title text check (length(title) <= 120),
+  created_at timestamptz not null default now()
+);
+create index if not exists studio365_ai_usage_member on studio365_ai_usage(email, kind, month);
+alter table studio365_ai_usage enable row level security;

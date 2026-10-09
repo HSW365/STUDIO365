@@ -52,6 +52,8 @@ export async function verifyKey(text, publicJwk = cfg.LICENSE_PUBLIC_KEY, now = 
 export const fmtDate = (ms) => new Date(ms).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
 
 function read() { try { return localStorage.getItem(STORE_KEY); } catch { return null; } }
+// The key saved on this device, as text. The AI Song service checks it again on its side.
+export const savedKey = () => read();
 export function clearKey() { try { localStorage.removeItem(STORE_KEY); } catch { /* private mode */ } }
 
 // Check a pasted key and remember it on this device if it is good.
