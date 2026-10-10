@@ -19,7 +19,7 @@ window.STUDIO365_CONFIG = {
   // The address of the AI Song service (supabase/functions/studio365-ai). Leave empty and AI Song says it is
   // being switched on. AI_PLAN is the lowest plan that includes it; AI_SONGS_PER_MONTH is only what the page
   // tells people. The real limits are set on the service (AI_MIN_PLAN, AI_SONGS_PER_MONTH).
-  AI_API_URL: "",
+  AI_API_URL: "https://lsxdlmrjrcivxwgfkpop.supabase.co/functions/v1/studio365-ai",
   AI_PLAN: "pro",
   AI_SONGS_PER_MONTH: 10,
 
