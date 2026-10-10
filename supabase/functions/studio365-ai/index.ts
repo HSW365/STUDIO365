@@ -5,7 +5,7 @@
 // per member per month, and passes the request on to the music model.
 //
 // Secrets (Supabase > Edge Functions > Secrets):
-//   ELEVENLABS_API_KEY      required. The music model key. Never put it in the site.
+//   ELEVENLABS_API_KEY      the music model key. If unset, the key in the database vault is used. Never put it in the site.
 //   AI_MIN_PLAN             optional. Lowest plan that gets AI Song: starter | plus | pro. Default pro.
 //   AI_SONGS_PER_MONTH      optional. Songs a member can make each calendar month. Default 10.
 //   AI_STEMS_PER_MONTH      optional. Vocal / music splits each month. Default same as songs.
@@ -135,13 +135,24 @@ async function modelError(req: Request, r: Response) {
       suggestion: d?.data?.prompt_suggestion || null, planSuggestion: d?.data?.composition_plan_suggestion || null,
     });
   }
-  if (r.status === 401 || r.status === 403) return fail(req, 503, "service_key", "AI Song is not switched on yet. The studio owner has been told.");
   if (r.status === 429 || status === "quota_exceeded") return fail(req, 503, "busy", "AI Song is at capacity right now. Try again in a few minutes. This did not use one of your songs.");
+  if (r.status === 401 || r.status === 403) return fail(req, 503, "service_key", "AI Song is not switched on yet. The studio owner has been told.");
   return fail(req, 502, "model_error", (typeof d?.message === "string" && d.message) || "The music model had a problem. Try again. This did not use one of your songs.");
 }
 
-const eleven = (path: string, init: RequestInit) =>
-  fetch(ELEVEN + path, { ...init, headers: { "xi-api-key": env("ELEVENLABS_API_KEY"), ...(init.headers || {}) } });
+// The music key: the ELEVENLABS_API_KEY secret if set, otherwise the one kept encrypted in the database vault
+// (public.studio365_ai_key(), which only this service can call).
+let musicKey = env("ELEVENLABS_API_KEY");
+async function getKey(): Promise<string> {
+  if (musicKey) return musicKey;
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/studio365_ai_key`, { method: "POST", headers: sbHeaders, body: "{}" });
+    if (r.ok) musicKey = String((await r.json()) || "");
+  } catch { /* stays empty */ }
+  return musicKey;
+}
+const eleven = async (path: string, init: RequestInit) =>
+  fetch(ELEVEN + path, { ...init, headers: { "xi-api-key": await getKey(), ...(init.headers || {}) } });
 
 // ---------------------------------------------------------------- handler
 Deno.serve(async (req) => {
@@ -151,7 +162,7 @@ Deno.serve(async (req) => {
 
   const who = await member(req.headers.get("x-s365-key"));
   if (!who.ok) return fail(req, who.status, who.code, who.message, { need: (who as any).need || MIN_PLAN });
-  if (!env("ELEVENLABS_API_KEY")) return fail(req, 503, "service_key", "AI Song is not switched on yet. The studio owner has been told.");
+  if (!(await getKey())) return fail(req, 503, "service_key", "AI Song is not switched on yet. The studio owner has been told.");
 
   try {
     const st = await standing(who);
