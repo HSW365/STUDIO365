@@ -1,233 +1,120 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0a0a0f">
-  <title>HSW365studio — Record, tune, mix and master in your browser</title>
-  <meta name="description" content="A full vocal studio in your browser. Record over your beat, snap the vocal to key, mix, master to streaming loudness, and export a release-ready file. No plugins, no downloads.">
-  <meta property="og:title" content="HSW365studio">
-  <meta property="og:description" content="Record it tonight. Release it tonight. A full vocal studio in your browser.">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="assets/img/og.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/base.css">
-  <link rel="stylesheet" href="assets/css/site.css">
-  <link rel="stylesheet" href="assets/css/pro.css">
-  <script>
-    // If anything breaks, say so on screen instead of leaving dead buttons.
-    (function () {
-      function show(msg) {
-        var b = document.getElementById('errBar');
-        if (!b) {
-          b = document.createElement('div'); b.id = 'errBar';
-          b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;background:#7f1d1d;color:#fff;padding:10px 16px;font:14px/1.4 system-ui,sans-serif';
-          (document.body || document.documentElement).appendChild(b);
-        }
-        b.textContent = 'Something broke on this page. Press Ctrl+Shift+R to reload. If it stays, send this line to support: ' + msg;
-      }
-      window.addEventListener('error', function (e) {
-        var t = e.target;
-        if (t && t !== window && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) { if (!/fonts\.|jsdelivr/.test(t.src || t.href || '')) show('could not load ' + (t.src || t.href)); return; }
-        show((e.message || 'error') + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
-      }, true);
-      window.addEventListener('unhandledrejection', function (e) { var r = e.reason; show(String(r && r.message || r)); });
-    })();
-  </script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HSW365studio | Record, tune, mix and master in your browser</title>
+<meta name="description" content="A full vocal studio in your browser. Record over your beat, snap the vocal to key, mix it, master it to streaming loudness and export the file. First 3 projects free.">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="canonical" href="https://hsw365.github.io/STUDIO365/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://hsw365.github.io/STUDIO365/">
+<meta property="og:title" content="HSW365studio | Record it tonight. Release it tonight.">
+<meta property="og:description" content="A full vocal studio in your browser. Record over your beat, snap the vocal to key, mix it, master it to streaming loudness and export the file. First 3 projects free.">
+<meta property="og:image" content="https://hsw365.github.io/STUDIO365/assets/img/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Crect%20width%3D%2764%27%20height%3D%2764%27%20rx%3D%278%27%20fill%3D%27%23a855f7%27/%3E%3Ctext%20x%3D%2732%27%20y%3D%2747%27%20font-family%3D%27Arial%20Narrow%2CArial%27%20font-weight%3D%27900%27%20font-size%3D%2744%27%20text-anchor%3D%27middle%27%20fill%3D%27%230a0a0f%27%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preload" as="font" type="font/woff2" href="assets/hsw/fonts/barlow-condensed-latin-900-normal.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/hsw/fonts/inter-latin-wght-normal.woff2" crossorigin>
+<link rel="stylesheet" href="assets/hsw/hsw.css">
+<style>:root{--acc:#a855f7;--acc-ink:#0a0a0f}
+:root{--ink:#0a0a0f;--ink-2:#101018;--panel:#14141d;--panel-2:#1a1a25;--line-2:#33334a;--text-2:#b4b4c3;--muted:#8f8f9f;--cyan:#22d3ee;--cyan-dim:rgba(34,211,238,.14);--violet:#a855f7;--violet-dim:rgba(168,85,247,.16);--red:#ef4444;--yellow:#fbbf24;--display:var(--disp);--r-s:3px;--r-m:4px;--r-l:6px}
+.console{margin:0;padding:18px}
+.console-top{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.demo-play{width:52px;height:52px;border-radius:50%;border:0;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;cursor:pointer;flex:none}
+.demo-play svg{width:20px;height:20px;fill:currentColor}
+.demo-play .i-stop{display:none}
+.demo-play.playing .i-play{display:none}
+.demo-play.playing .i-stop{display:block}
+.ab{display:inline-flex;padding:4px;border-radius:3px;background:var(--bg);border:1px solid var(--line2)}
+.ab button{border:0;background:none;padding:9px 16px;border-radius:2px;cursor:pointer;font-weight:600;font-size:14.5px;color:var(--text2)}
+.ab button[aria-checked="true"][data-mode="tuned"]{background:var(--acc);color:var(--acc-ink)}
+.ab button[aria-checked="true"][data-mode="raw"]{background:#3a3a4d;color:#fff}
+.console-readout{margin-left:auto;font:700 14px var(--mono);color:var(--text2)}
+#demoCanvas{width:100%;height:clamp(240px,26vw,340px);border-radius:4px;background:var(--bg);border:1px solid var(--line)}
+.console figcaption{font-size:13.5px;color:var(--mut);margin-top:14px;padding-top:14px;border-top:1px solid var(--line);line-height:1.5}
+.console figcaption b{color:#fff;font-weight:600}
+.btn.primary{background:var(--acc);color:var(--acc-ink)}
+.btn.primary:hover{background:#fff}
+.btn.ghost{border-color:var(--line2);color:#fff}
+.btn.ghost:hover{border-color:#fff}
+.pro-sheet{border-radius:6px}
+.pro-sheet .btn{height:auto;min-height:46px;font-size:15px;padding:0 18px}
+.pro-sheet h2,.pro-sheet h3{letter-spacing:.01em}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);max-width:min(560px,calc(100vw - 32px));background:var(--card2);border:1px solid var(--line2);color:#fff;padding:12px 18px;border-radius:4px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.error{border-color:var(--bad)}
+</style>
+<script>document.documentElement.classList.add("js")</script>
+
+<link rel="stylesheet" href="assets/css/pro.css">
 </head>
-<body class="site">
-  <a class="skip" href="#main">Skip to content</a>
-  <header class="nav">
-    <a class="brand" href="./" aria-label="HSW365studio home">
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="20" rx="1"/><rect x="17" y="9" width="4" height="14" rx="1"/><rect x="24" y="3" width="4" height="26" rx="1"/></svg>
-      <span>HSW365studio</span>
-    </a>
-    <nav class="nav-links" aria-label="Main">
-      <a href="#chain">How it works</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">Questions</a>
-    </nav>
-    <a class="btn primary" href="studio.html">Open the studio</a>
-  </header>
-
-  <main id="main">
-    <section class="hero">
-      <div class="hero-copy">
-        <h1>Record it tonight.<br>Release it tonight.</h1>
-        <p class="lede">HSW365studio is a full vocal studio in your browser. Record over your beat, snap the vocal to key, mix it, master it to streaming loudness, and walk away with a finished file.</p>
-        <div class="hero-cta">
-          <a class="btn primary big" href="studio.html">Start your 3 free projects</a>
-          <span class="cta-note">No download. No card to start. Plans from $15 a month after that.</span>
-        </div>
-      </div>
-
-      <figure class="console" aria-labelledby="demoCaption">
-        <div class="console-top">
-          <button class="demo-play" id="demoPlay" type="button" aria-label="Play demo">
-            <svg viewBox="0 0 24 24" class="i-play" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
-            <svg viewBox="0 0 24 24" class="i-stop" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
-          </button>
-          <div class="ab" role="radiogroup" aria-label="What you hear">
-            <button type="button" role="radio" aria-checked="false" data-mode="raw" id="abRaw">As sung</button>
-            <button type="button" role="radio" aria-checked="true" data-mode="tuned" id="abTuned">Tuned</button>
-          </div>
-          <span class="console-readout" id="demoNote" aria-live="off">A minor</span>
-        </div>
-        <canvas id="demoCanvas" aria-hidden="true"></canvas>
-        <figcaption id="demoCaption">Press play, then flip between <b>As sung</b> and <b>Tuned</b>. The grey line is the singer drifting. The line on top is where HSW365studio puts every note.</figcaption>
-      </figure>
-    </section>
-
-    <section class="chain" id="chain" aria-labelledby="chainTitle">
-      <h2 id="chainTitle">Five stops from idea to finished record.</h2>
-      <ol class="steps">
-        <li>
-          <span class="step-n">1</span>
-          <h3>Record</h3>
-          <p>Drop in your beat and press Record. A count-in and click keep you on time, and every take lines up to the beat automatically.</p>
-        </li>
-        <li>
-          <span class="step-n">2</span>
-          <h3>Tune</h3>
-          <p>HSW365studio reads the key of your beat and pulls each note to it. Go hard and robotic, or keep it natural with your vibrato intact.</p>
-        </li>
-        <li>
-          <span class="step-n">3</span>
-          <h3>Mix</h3>
-          <p>A real console: faders, pan, mute, solo and live meters on every channel. Drag the EQ, set the compressor, tame the S sounds, and hear every move while it plays.</p>
-        </li>
-        <li>
-          <span class="step-n">4</span>
-          <h3>Master</h3>
-          <p>Hit a real loudness target, -14 LUFS for streaming or -9 for the club, with peaks held safely under -1 dB.</p>
-        </li>
-        <li>
-          <span class="step-n">5</span>
-          <h3>Export</h3>
-          <p>Download a 24-bit WAV for your distributor, MP3s for sharing, or your processed vocal alone for a producer.</p>
-        </li>
-      </ol>
-    </section>
-
-    <section class="proof" aria-labelledby="proofTitle">
-      <div class="proof-copy">
-        <h2 id="proofTitle">Your session never leaves your machine.</h2>
-        <p>Takes, beats and settings save inside your browser as you work. Close the tab, come back next week, and the session opens where you left it. Nothing uploads unless you choose to share it.</p>
-      </div>
-      <dl class="facts">
-        <div><dt>Runs in</dt><dd>Chrome, Edge, Safari and Firefox on desktop, laptop and tablet</dd></div>
-        <div><dt>Takes</dt><dd>As many as you want per session. Pick the best one and keep the rest</dd></div>
-        <div><dt>Exports</dt><dd>WAV 24-bit, MP3 320, MP3 128, processed vocal stem</dd></div>
-        <div><dt>Shortcuts</dt><dd>Space to play and stop, R to record</dd></div>
-      </dl>
-    </section>
-
-    <section class="pricing" id="pricing" aria-labelledby="pricingTitle">
-      <h2 id="pricingTitle">Your first 3 projects are free. Then pick a plan.</h2>
-      <p class="pricing-sub">Each purchase is one month. Nothing bills on its own. Add a month whenever you want.</p>
-      <div class="plans three">
-        <article class="plan">
-          <h3>Starter</h3>
-          <p class="price"><b>$15</b><span>a month</span></p>
-          <ul>
-            <li>Unlimited projects</li>
-            <li>Record over your beat with as many vocal tracks as the song needs</li>
-            <li>Key detection and pitch correction</li>
-            <li>Mixing console with live meters, EQ, compressor, de-esser, reverb and echo</li>
-            <li>Editing tools: arrow, range, split, eraser, cut, copy, paste, fades, undo</li>
-            <li>Mastering to streaming loudness, WAV and MP3 export</li>
-          </ul>
-          <a class="btn ghost big" data-buy="starter" href="https://hsw365.co/cart/47998395744417:1" target="_blank" rel="noopener">Get Starter</a>
-        </article>
-        <article class="plan pro">
-          <h3>Plus</h3>
-          <p class="price"><b>$20</b><span>a month</span></p>
-          <ul>
-            <li>Everything in Starter</li>
-            <li>Tune Pro: place notes by hand in the pitch editor, plus humanize, flex, transpose and voice character</li>
-            <li>Vocal stacks: wide doubles and in-key harmonies built from your own take</li>
-            <li>Six more vocal presets, from R&amp;B silk to drill</li>
-          </ul>
-          <a class="btn pro big" data-buy="plus" href="https://hsw365.co/cart/47998395777185:1" target="_blank" rel="noopener">Get Plus</a>
-        </article>
-        <article class="plan">
-          <h3>Pro</h3>
-          <p class="price"><b>$25</b><span>a month</span></p>
-          <ul>
-            <li>Everything in Plus</li>
-            <li>A&amp;R365 record check: a score and plain fixes before you release</li>
-            <li>Release pack: masters, tagged MP3, 3000 px cover and a release sheet in one ZIP</li>
-            <li>Session backup files, so a song can move to another computer</li>
-          </ul>
-          <a class="btn ghost big" data-buy="pro" href="https://hsw365.co/cart/47998395809953:1" target="_blank" rel="noopener">Get Pro</a>
-        </article>
-      </div>
-      <div class="pro-cta center">
-        <a class="btn primary big" href="studio.html" id="btnGoPro">Start your 3 free projects</a>
-        <button class="link" type="button" id="btnHaveKey">I have a key</button>
-      </div>
-      <p class="form-msg center" id="proNote">Checkout is on hsw365.co. Your key is emailed to the address on your order. Tap the link in that email and your plan turns on.</p>
-    </section>
-
-    <section class="faq" id="faq" aria-labelledby="faqTitle">
-      <h2 id="faqTitle">Questions</h2>
-      <div class="faq-list">
-        <details>
-          <summary>What do I need to start?</summary>
-          <p>A computer, a browser, and a microphone. A USB mic or an interface is best, but a headset mic works for writing sessions. Wear headphones while you record so the beat doesn't bleed into your vocal.</p>
-        </details>
-        <details>
-          <summary>Is the tuning real pitch correction?</summary>
-          <p>Yes. HSW365studio tracks the pitch of your take, finds the nearest note in your key, and shifts the audio to it. Retune speed and strength control how obvious it is, from a hard, stepped effect to light, invisible correction.</p>
-        </details>
-        <details>
-          <summary>Where are my sessions stored?</summary>
-          <p>In your browser's storage on the device you used. They stay there until you delete them or clear site data. Export anything you want to keep forever. Pro adds session backup files, so you can save a whole session and open it on another computer.</p>
-        </details>
-        <details>
-          <summary>Can I release what I make?</summary>
-          <p>Yes. The master WAV is 24-bit and loudness-matched for streaming, which is what distributors ask for. Your music is yours. HSW365studio claims no rights to anything you record.</p>
-        </details>
-        <details>
-          <summary>What does it cost?</summary>
-          <p>Your first 3 projects are free. After that, buy a month of Starter, Plus or Pro at hsw365.co. Your key is emailed to the address on your order. Tap the link in that email and your plan turns on. Nothing is billed automatically. When your month ends your sessions stay on your device, and you can add another month whenever you like.</p>
-        </details>
-        <details>
-          <summary>Does it work on my phone?</summary>
-          <p>It opens and plays back on phones, but recording on a phone depends on the browser's mic handling. For sessions you plan to release, use a laptop or tablet with headphones.</p>
-        </details>
-        <details>
-          <summary>My recording is out of time with the beat.</summary>
-          <p>Bluetooth headphones add delay the browser can't always measure. Use wired headphones, or drag the take with the Move tool, or nudge it with the Vocal timing fader on the Vocal channel, until it sits on the grid.</p>
-        </details>
-      </div>
-    </section>
-
-    <section class="closer">
-      <h2>The beat is ready. So are you.</h2>
-      <a class="btn primary big" href="studio.html">Start your 3 free projects</a>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <div class="footer-brand">
-      <b>HSW365studio</b>
-      <span>A product of HSW365 Media LLC. Turn negative into positive.</span>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="util"><div class="wrap"><span class="util-l">HSW365studio is a product of HSW365 Media LLC. Runs in Chrome, Edge, Safari and Firefox.</span><span class="util-r"><a href="studio.html">Open the studio</a></span></div></div>
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="HSW365studio home"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="20" rx="1"/><rect x="17" y="9" width="4" height="14" rx="1"/><rect x="24" y="3" width="4" height="26" rx="1"/></svg></span><span><b>HSW365studio</b><small>Vocal studio in your browser</small></span></a>
+    <nav class="nav-links" aria-label="Page"><a href="#does">What it does</a><a href="#chain">How it works</a><a href="#session">Your session</a><a href="#pricing">Pricing</a><a href="#faq">Questions</a></nav>
+    <div class="nav-cta">
+      
+      <a class="btn btn-acc btn-sm" href="studio.html" >Open the studio</a>
+      <button class="menu-btn" type="button" aria-label="Menu" aria-expanded="false"><span></span></button>
     </div>
-    <nav aria-label="Footer">
-      <a href="studio.html">Studio</a>
-      <a href="#pricing">Pricing</a>
-      <a href="mailto:hsw365media@gmail.com">Contact</a>
-    </nav>
-    <small>© <span id="year">2026</span> HSW365 Media LLC</small>
-  </footer>
-
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="config.js"></script>
-  <script type="module" src="assets/js/landing.js"></script>
+  </div>
+  <nav class="mnav" aria-label="Menu"><a href="#does">What it does</a><a href="#chain">How it works</a><a href="#session">Your session</a><a href="#pricing">Pricing</a><a href="#faq">Questions</a><a class="btn btn-acc" href="studio.html" >Open the studio</a></nav>
+</header>
+<main id="main">
+<section class="hero" id="top">
+  <div class="wrap hero-grid wide-panel">
+    <div>
+      <p class="status"><i></i>No download. No card to start.</p>
+      <h1 class="fit"><span>Record it tonight.</span><span>Release it tonight.</span></h1>
+      <p class="lede">HSW365studio is a full vocal studio in your browser. Record over your beat, snap the vocal to key, mix it, master it to streaming loudness, and walk away with a finished file.</p>
+      <div class="hero-ctas"><a class="btn btn-acc" href="studio.html" >Start your 3 free projects</a><a class="btn btn-line" href="#pricing" >See pricing</a></div>
+      <p class="hero-fine">Your first 3 projects are free. Plans from $15 a month after that.</p>
+    </div>
+    <div><figure class="panel console" aria-labelledby="demoCaption">
+  <div class="console-top">
+    <button class="demo-play" id="demoPlay" type="button" aria-label="Play demo">
+      <svg viewBox="0 0 24 24" class="i-play" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+      <svg viewBox="0 0 24 24" class="i-stop" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+    </button>
+    <div class="ab" role="radiogroup" aria-label="What you hear">
+      <button type="button" role="radio" aria-checked="false" data-mode="raw" id="abRaw">As sung</button>
+      <button type="button" role="radio" aria-checked="true" data-mode="tuned" id="abTuned">Tuned</button>
+    </div>
+    <span class="console-readout" id="demoNote" aria-live="off">A minor</span>
+  </div>
+  <canvas id="demoCanvas" aria-hidden="true"></canvas>
+  <figcaption id="demoCaption">Press play, then flip between <b>As sung</b> and <b>Tuned</b>. The grey line is the singer drifting. The line on top is where HSW365studio puts every note.</figcaption>
+</figure></div>
+  </div>
+</section>
+<div class="plate"><div class="wrap"><div><b>3 free</b><strong>Projects to start</strong><span>No card and nothing to download</span></div><div><b>24-bit WAV</b><strong>What distributors ask for</strong><span>Plus MP3 320, MP3 128 and a vocal stem</span></div><div><b>-14 LUFS</b><strong>Mastered for streaming</strong><span>Or -9 for the club, peaks under -1 dB</span></div><div><b>From $15</b><strong>A month, when you want one</strong><span>Nothing bills on its own</span></div></div></div>
+<section class="block" id="does"><div class="wrap"><div class="sec-head"><h2>One room. Every stage of the record.</h2><p class="lede">Everything between the idea and the upload happens in one browser tab.</p></div><div class="tabs"><div class="tab-list" role="tablist" aria-orientation="vertical"><button class="tab on" type="button" role="tab" aria-selected="true" tabindex="0"><b>Record</b><span>Your beat, a count-in, as many vocal tracks as the song needs</span></button><button class="tab" type="button" role="tab" aria-selected="false" tabindex="-1"><b>Tune</b><span>Reads the key of your beat and pulls each note to it</span></button><button class="tab" type="button" role="tab" aria-selected="false" tabindex="-1"><b>Mix</b><span>A real console with faders, pan and live meters</span></button><button class="tab" type="button" role="tab" aria-selected="false" tabindex="-1"><b>Master and export</b><span>Hit a loudness target and download the file</span></button></div><div><div class="pane on" role="tabpanel"><h3>Record</h3><div class="shot"><div class="ticket"><div class="ticket-head"><span>Session</span><b>REC</b></div><dl><dt>Beat</dt><dd>Dropped in, key detected</dd><dt>Count-in</dt><dd>On, with click</dd><dt>Lead</dt><dd>Take 3 kept</dd><dt>Ad-libs</dt><dd>2 tracks</dd><dt>Shortcut</dt><dd>R to record, Space to play</dd></dl></div></div><div class="pane-body"><div><p>Drop in your beat and press Record. A count-in and click keep you on time, and every take lines up to the beat automatically.</p><p>Lay the lead, then stack ad-libs on their own tracks. Take as many as you want and keep the best one.</p></div><ul class="checks"><li>As many vocal tracks as the song needs</li><li>Takes line up to the beat</li><li>Count-in and click</li><li>Editing tools: split, cut, copy, paste, fades, undo</li></ul></div></div><div class="pane" role="tabpanel"><h3>Tune</h3><div class="shot"><div class="ticket"><div class="ticket-head"><span>Tune</span><b>A MINOR</b></div><dl><dt>Key</dt><dd>Read from your beat</dd><dt>Retune speed</dt><dd>Hard and stepped, or light</dd><dt>Strength</dt><dd>How obvious it is</dd><dt>Vibrato</dt><dd>Kept intact</dd><dt>Tune Pro</dt><dd>Place notes by hand (Plus)</dd></dl></div></div><div class="pane-body"><div><p>HSW365studio tracks the pitch of your take, finds the nearest note in your key and shifts the audio to it.</p><p>Go hard and robotic, or keep it natural with your vibrato intact. The demo at the top of this page is the same correction.</p></div><ul class="checks"><li>Key detection</li><li>Real pitch correction, not an effect</li><li>Retune speed and strength controls</li><li>Pitch display while you sing</li></ul></div></div><div class="pane" role="tabpanel"><h3>Mix</h3><div class="shot"><div class="ticket"><div class="ticket-head"><span>Console</span><b>LIVE</b></div><dl><dt>Every channel</dt><dd>Fader, pan, mute, solo, meter</dd><dt>EQ</dt><dd>Drag the curve</dd><dt>Compressor</dt><dd>Set it and hear it</dd><dt>De-esser</dt><dd>Tames the S sounds</dd><dt>Space</dt><dd>Reverb and echo</dd></dl></div></div><div class="pane-body"><div><p>A real console: faders, pan, mute, solo and live meters on every channel. Drag the EQ, set the compressor, tame the S sounds, and hear every move while it plays.</p></div><ul class="checks"><li>Faders, pan, mute and solo</li><li>Live meters on every channel</li><li>EQ, compressor and de-esser</li><li>Reverb and echo</li></ul></div></div><div class="pane" role="tabpanel"><h3>Master and export</h3><div class="shot"><div class="ticket"><div class="ticket-head"><span>Export</span><b>READY</b></div><dl><dt>Loudness</dt><dd>-14 LUFS streaming, -9 club</dd><dt>Peaks</dt><dd>Held under -1 dB</dd><dt>WAV</dt><dd>24-bit, for your distributor</dd><dt>MP3</dt><dd>320 and 128, for sharing</dd><dt>Stem</dt><dd>Processed vocal alone</dd></dl></div></div><div class="pane-body"><div><p>Hit a real loudness target, -14 LUFS for streaming or -9 for the club, with peaks held safely under -1 dB.</p><p>Download a 24-bit WAV for your distributor, MP3s for sharing, or your processed vocal alone for a producer.</p></div><ul class="checks"><li>Streaming and club loudness targets</li><li>24-bit WAV master</li><li>MP3 320 and MP3 128</li><li>Processed vocal stem</li></ul></div></div></div></div></div></section>
+<section class="block tint" id="chain"><div class="wrap"><div class="sec-head"><h2>Five stops from idea to finished record.</h2></div><ol class="steps" style="--n:5"><li><h3>Record</h3><p>Drop in your beat and press Record.</p></li><li><h3>Tune</h3><p>The vocal is pulled to the key of your beat.</p></li><li><h3>Mix</h3><p>Balance it on the console while it plays.</p></li><li><h3>Master</h3><p>Bring it to streaming loudness.</p></li><li><h3>Export</h3><p>Download the WAV and the MP3s.</p></li></ol></div></section>
+<section class="block" id="session"><div class="wrap"><div class="split"><div><h2>Your session never leaves your machine.</h2><p class="lede">Takes, beats and settings save inside your browser as you work. Close the tab, come back next week, and the session opens where you left it. Nothing uploads unless you choose to share it.</p></div><dl class="deflist" style="margin-top:0"><div><dt>Runs in</dt><dd>Chrome, Edge, Safari and Firefox on desktop, laptop and tablet</dd></div><div><dt>Takes</dt><dd>As many as you want per session. Pick the best one and keep the rest</dd></div><div><dt>Exports</dt><dd>WAV 24-bit, MP3 320, MP3 128, processed vocal stem</dd></div><div><dt>Shortcuts</dt><dd>Space to play and stop, R to record</dd></div></dl></div></div></section>
+<section class="block tint" id="pricing"><div class="wrap"><div class="sec-head"><h2>Your first 3 projects are free. Then pick a plan.</h2><p class="lede">Each purchase is one month. Nothing bills on its own. Add a month whenever you want.</p></div><div class="plans"><article class="plan"><h3>Starter</h3><p class="for">The full studio</p><p class="price"><b>$15</b><span>a month</span></p><ul class="checks"><li>Unlimited projects</li><li>Record over your beat with as many vocal tracks as the song needs</li><li>Key detection and pitch correction</li><li>Mixing console with live meters, EQ, compressor, de-esser, reverb and echo</li><li>Editing tools: arrow, range, split, eraser, cut, copy, paste, fades, undo</li><li>Mastering to streaming loudness, WAV and MP3 export</li></ul><a class="btn btn-line" data-buy="starter" href="https://hsw365.co/cart/47998395744417:1" target="_blank" rel="noopener">Get Starter</a></article><article class="plan main"><h3>Plus</h3><p class="for">For stacked, tuned vocals</p><p class="price"><b>$20</b><span>a month</span></p><ul class="checks"><li>Everything in Starter</li><li>Tune Pro: place notes by hand in the pitch editor, plus humanize, flex, transpose and voice character</li><li>Vocal stacks: wide doubles and in-key harmonies built from your own take</li><li>Six more vocal presets, from R&amp;B silk to drill</li></ul><a class="btn btn-acc" data-buy="plus" href="https://hsw365.co/cart/47998395777185:1" target="_blank" rel="noopener">Get Plus</a></article><article class="plan"><h3>Pro</h3><p class="for">For records you are releasing</p><p class="price"><b>$25</b><span>a month</span></p><ul class="checks"><li>Everything in Plus</li><li>A&amp;R365 record check: a score and plain fixes before you release</li><li>Release pack: masters, tagged MP3, 3000 px cover and a release sheet in one ZIP</li><li>Session backup files, so a song can move to another computer</li></ul><a class="btn btn-line" data-buy="pro" href="https://hsw365.co/cart/47998395809953:1" target="_blank" rel="noopener">Get Pro</a></article></div><p class="plan-note"><a href="studio.html" id="btnGoPro">Start your 3 free projects</a> &nbsp; <button type="button" id="btnHaveKey">I have a key</button></p><p class="plan-note" id="proNote" style="margin-top:10px">Checkout is on hsw365.co. Your key is emailed to the address on your order. Tap the link in that email and your plan turns on.</p></div></section>
+<section class="block" id="about"><div class="wrap"><p class="motto">Turn negative into positive.<cite>The HSW365 motto. No studio budget becomes a finished record tonight.</cite></p><div class="about-grid"><div class="about-body"><h2>Who is behind HSW365studio</h2><p class="lede">HSW365studio is built and run by HSW365 Media LLC in New Jersey.</p><p>HSW365 Media LLC is run by its founder, Elvin Torres Sr., a U.S. Army veteran, author and speaker. He builds each product himself and answers the email himself.</p></div><div class="creds"><div><b>Your music is yours</b><span>No rights claimed on anything you record</span></div><div><b>Stays on your device</b><span>Nothing uploads unless you share it</span></div><div><b>No auto-billing</b><span>Each purchase is one month</span></div><div><b>Built by an artist</b><span>The founder records under the HOODSTAR365 label</span></div></div></div></div></section>
+<section class="block tint" id="family"><div class="wrap"><div class="sec-head"><h2>More from HSW365.</h2><p class="lede">HSW365studio is one of five products HSW365 Media builds and runs.</p></div><div class="ledger"><a href="https://hsw365.github.io/calltwin/"><div><h3>CallTwin</h3><span>AI receptionist</span></div><div><span class="k">Made for</span><span class="v">Local businesses</span></div><p>Answers the business line day and night, takes the caller&#x27;s name, number and the job, and sends it to the owner.</p><span class="go">Open CallTwin</span></a><a href="https://hsw365.github.io/queenee/"><div><h3>QUEENEE</h3><span>Website building</span></div><div><span class="k">Made for</span><span class="v">Indie artists and businesses</span></div><p>Real websites built from your details. Music, video, merch, booking and contact in one place you own.</p><span class="go">Open QUEENEE</span></a><a href="https://hsw365.github.io/iRUN/"><div><h3>iRun</h3><span>Short video, made and posted</span></div><div><span class="k">Made for</span><span class="v">Brands that need to post daily</span></div><p>Writes the script, records the voiceover, cuts the vertical video and posts it to TikTok and Instagram on a schedule.</p><span class="go">Open iRun</span></a><div class="here"><div><h3>HSW365studio</h3><span>Vocal studio in the browser</span></div><div><span class="k">Made for</span><span class="v">Artists and writers</span></div><p>Record over your beat, tune the vocal to key, mix it, master it to streaming loudness and export the file.</p><span></span></div><a href="https://klipit.onrender.com/"><div><h3>Klipit</h3><span>Stream clipper</span></div><div><span class="k">Made for</span><span class="v">Streamers and clip pages</span></div><p>Paste a stream link and get the best moments back as vertical clips ready to post.</p><span class="go">Open Klipit</span></a></div></div></section>
+<section class="block" id="faq"><div class="wrap"><div class="faq"><div><h2>Questions.</h2><p class="lede" style="margin-top:20px">What artists ask before the first session.</p></div><div class="faq-list"><details open><summary>What do I need to start?</summary><p>A computer, a browser, and a microphone. A USB mic or an interface is best, but a headset mic works for writing sessions. Wear headphones while you record so the beat doesn't bleed into your vocal.</p></details><details><summary>Is the tuning real pitch correction?</summary><p>Yes. HSW365studio tracks the pitch of your take, finds the nearest note in your key, and shifts the audio to it. Retune speed and strength control how obvious it is, from a hard, stepped effect to light, invisible correction.</p></details><details><summary>Where are my sessions stored?</summary><p>In your browser's storage on the device you used. They stay there until you delete them or clear site data. Export anything you want to keep forever. Pro adds session backup files, so you can save a whole session and open it on another computer.</p></details><details><summary>Can I release what I make?</summary><p>Yes. The master WAV is 24-bit and loudness-matched for streaming, which is what distributors ask for. Your music is yours. HSW365studio claims no rights to anything you record.</p></details><details><summary>What does it cost?</summary><p>Your first 3 projects are free. After that, buy a month of Starter, Plus or Pro at hsw365.co. Your key is emailed to the address on your order. Tap the link in that email and your plan turns on. Nothing is billed automatically. When your month ends your sessions stay on your device, and you can add another month whenever you like.</p></details><details><summary>Does it work on my phone?</summary><p>It opens and plays back on phones, but recording on a phone depends on the browser's mic handling. For sessions you plan to release, use a laptop or tablet with headphones.</p></details><details><summary>My recording is out of time with the beat.</summary><p>Bluetooth headphones add delay the browser can't always measure. Use wired headphones, or drag the take with the Move tool, or nudge it with the Vocal timing fader on the Vocal channel, until it sits on the grid.</p></details></div></div></div></section>
+<section class="band"><div class="wrap"><div><h2>The beat is ready. So are you.</h2><p>Three projects free. No card and nothing to download.</p></div><div class="band-ctas"><a class="btn btn-ink" href="studio.html" >Start your 3 free projects</a></div></div></section>
+</main>
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div><a class="logo" href="#top" aria-label="HSW365studio home"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="20" rx="1"/><rect x="17" y="9" width="4" height="14" rx="1"/><rect x="24" y="3" width="4" height="26" rx="1"/></svg></span><span><b>HSW365studio</b><small>Vocal studio in your browser</small></span></a><p>A full vocal studio in your browser: record, tune, mix, master and export.</p></div>
+      <div><h4>HSW365studio</h4><ul><li><a href="studio.html">Open the studio</a></li><li><a href="#pricing">Pricing</a></li><li><a href="#faq">Questions</a></li></ul></div>
+      <div><h4>More from HSW365</h4><ul><li><a href="https://hsw365.github.io/calltwin/">CallTwin</a></li><li><a href="https://hsw365.github.io/queenee/">QUEENEE</a></li><li><a href="https://hsw365.github.io/iRUN/">iRun</a></li><li><a href="https://klipit.onrender.com/">Klipit</a></li></ul></div>
+      <div><h4>Contact</h4><ul><li><a href="mailto:hsw365media@gmail.com">hsw365media@gmail.com</a></li><li><a href="https://hsw365.co">hsw365.co</a></li></ul></div>
+    </div>
+    <div class="legal"><p>Your music is yours. HSW365studio claims no rights to anything you record. <span hidden>&copy; <span id="year">2026</span></span></p><p>&copy; 2026 HSW365 Media LLC. Turn negative into positive.</p></div>
+  </div>
+</footer>
+<div class="sticky"><a class="btn btn-acc" href="studio.html" >Start your 3 free projects</a></div>
+<script src="assets/hsw/hsw.js"></script>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="config.js"></script>
+<script type="module" src="assets/js/landing.js"></script>
 </body>
 </html>
