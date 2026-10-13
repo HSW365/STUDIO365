@@ -88,6 +88,11 @@ Without Supabase, "I paid. Send my key" opens the customer's email app addressed
 
 ## How the engine works
 
+- The studio is a full-screen app shell (`shell.css`, `shell.js`): transport and tools across the top, the arrange view in the middle, a resizable Mixer / Takes dock at the bottom (drag the grip, press M to show or hide it), the Tune / Mix / Stack / Master inspector on the right. On phones it becomes one view at a time with a tab bar: Tracks, Mixer, Takes, Tune & FX. The transport stays on screen in every view.
+- Every panel is isolated, so a moving meter, playhead or clock repaints only itself. The playhead is an element that slides over the arrange view; the meters are drawn from pre-rendered images at 30 frames a second and skip frames where the reading has not moved.
+- On phones, tablets and Safari the mix is measured only when asked (Master > Measure the master, the record check, export). Re-rendering the whole song after every change is what used to freeze those devices. Desktop Chrome, Edge and Firefox still measure in the background, 3 seconds after the last change.
+- The console processors (compressor, de-esser, limiter) do their level math once every 16 samples and glide the gain in between, and allocate nothing while audio runs.
+
 - What you hear is the live console (`mixer.js` built on the browser's audio engine). Every control lands on it at once.
 - A full offline bounce is only used to measure the finished record (loudness, peak, the record check) and to export. The measuring bounce runs in the background when the transport is stopped and the mix has been left alone, and is cancelled the moment you play, record or change something.
 - Tuning, mastering and analysis run in two background workers (`jobs.js`). A job that has been overtaken by a newer setting is stopped, not queued.

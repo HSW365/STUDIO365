@@ -465,12 +465,21 @@ function abortBounce() {
   clearTimeout(renderTimer); renderTimer = null;
   if (bounce) { bounce.ctl.abort(); cancelJobs('main', 'master-bounce'); }
 }
-function scheduleBounce(delay = 1400) {
+// Phones, tablets and Safari get the measuring bounce only when it is asked for (Measure, the record check,
+// export). Re-rendering the whole song in the background after every move is what froze them.
+const LIGHT_DEVICE = (() => {
+  const ua = navigator.userAgent || '';
+  const touch = (navigator.maxTouchPoints || 0) > 1 && matchMedia('(pointer: coarse)').matches;
+  const safari = /Safari\//.test(ua) && !/Chrome|Chromium|CriOS|Edg|Android/.test(ua);
+  const lowMem = navigator.deviceMemory && navigator.deviceMemory <= 4;
+  return touch || safari || /iPhone|iPad|iPod|Android/.test(ua) || !!lowMem;
+})();
+function scheduleBounce(delay = 3000) {
   clearTimeout(renderTimer); renderTimer = null;
   if (bounce && bounce.sig !== renderSig()) abortBounce();
   if (!hasAudio()) { mixCache = null; updateStats(); updateTransport(); setRenderState('Load a beat or record a take to start.'); return; }
   updateStats();
-  if (playing || recording) return;
+  if (playing || recording || LIGHT_DEVICE) { if (!tuneBusy && !playing && !recording) setRenderState(readyText()); return; }
   renderTimer = setTimeout(() => { runRender().catch((err) => console.error(err)); }, delay);
 }
 const tunePending = () => P.tune.enabled && (tuneBusy || tuneTimer != null) && placedTakes().some((t) => !tunedFor(t));
@@ -514,6 +523,7 @@ async function runRender(force = false) {
       return false;
     } finally {
       if (bounce === job) { bounce = null; if ($('renderState').classList.contains('busy') && !tuneBusy) setRenderState(hasAudio() ? readyText() : ''); }
+      updateStats();
     }
   })();
   bounce = job;
@@ -541,7 +551,10 @@ function updateStats() {
   $('statPeak').textContent = s ? `${s.peakDb.toFixed(1)} dB` : '–';
   $('statGr').textContent = s && s.reductionDb != null ? `${Math.abs(s.reductionDb).toFixed(1)} dB` : '–';
   // dimmed while the numbers are from before your last change
-  $('statLufs').closest('.stats').classList.toggle('stale', !!mixCache && mixCache.sig !== renderSig());
+  const stale = !!mixCache && mixCache.sig !== renderSig();
+  $('statLufs').closest('.stats').classList.toggle('stale', stale);
+  const m = $('btnMeasure');
+  if (m) { m.disabled = !hasAudio() || (!!mixCache && !stale) || !!bounce; m.textContent = mixCache && !stale ? 'Master measured' : (mixCache ? 'Measure again' : 'Measure the master'); }
 }
 
 // ------------------------------------------------------------------ playback (the live console)
@@ -707,7 +720,7 @@ function dropMic() {
   try { if (micSrc) micSrc.disconnect(); } catch { /* gone */ }
   if (micStream) micStream.getTracks().forEach((t) => { t.onended = null; t.stop(); });
   micStream = null; micSrc = null;
-  $('meterFill').style.width = '0%';
+  $('meterFill').style.transform = 'scaleX(0)';
 }
 function micId() { try { return localStorage.getItem(MIC_KEY) || ''; } catch { return ''; } }
 async function ensureMic() {
@@ -761,12 +774,12 @@ function addRecChunk(a) {
 function updateMeter(pk) {
   const db = D.gainToDb(pk);
   const pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
-  $('meterFill').style.width = `${pct}%`;
+  $('meterFill').style.transform = `scaleX(${pct / 100})`;   // transform, not width: no page layout per frame
   const now = performance.now();
   if (pct > peakHold || now - peakHoldTime > 1200) { peakHold = pct; peakHoldTime = now; }
   const pk2 = $('meterPeak');
-  pk2.style.left = `calc(${peakHold}% - 2px)`;
-  pk2.style.background = db > -1 ? 'var(--red)' : 'var(--text)';
+  pk2.style.transform = `translateX(calc(${peakHold}% - 2px))`;
+  pk2.style.color = db > -1 ? 'var(--red)' : 'var(--text)';
 }
 
 async function startRecording() {
@@ -1118,7 +1131,21 @@ function paintTimeline() {
   if (!cv.clientWidth) return;
   followPlayhead();
   if (!tlLayer || tlKey !== viewKey(cv)) { drawTimeline(); return; }
+  // Playing: the picture stays put and only the playhead element slides (compositor only, no repaint).
+  if (!recording) { if (tlDirty) { putLayer(cv, tlLayer); tlDirty = false; } movePlayhead(cv.clientWidth); return; }
   timelineOverlay(putLayer(cv, tlLayer), cv.clientWidth, cv.clientHeight);
+  tlDirty = true;
+}
+let tlDirty = false, playheadEl = null;
+function movePlayhead(w) {
+  if (!playheadEl) {
+    playheadEl = document.createElement('div'); playheadEl.className = 'playhead'; playheadEl.setAttribute('aria-hidden', 'true');
+    $('timeline').append(playheadEl);
+  }
+  const { t0, span } = view();
+  const x = (currentPosition() - t0) * (w / span);
+  playheadEl.hidden = recording || x < -2 || x > w + 2;
+  playheadEl.style.transform = `translate3d(${Math.round(x)}px,0,0)`;
 }
 function timelineOverlay(g, w, h) {
   const { t0, span } = view();
@@ -1144,7 +1171,7 @@ function timelineOverlay(g, w, h) {
     }
     g.fillStyle = '#ef4444'; g.fillRect(b, 0, 2, h);
   } else {
-    g.fillStyle = '#ededf2'; g.fillRect(Math.round(X(currentPosition())), 0, 2, h);
+    movePlayhead(w);
   }
 }
 let lastTotal = '';
@@ -1215,8 +1242,9 @@ function drawTimeline() {
     g.fillRect(Math.round(a), y + 1, 1, TRACK_H - 1); g.fillRect(Math.round(b), y + 1, 1, TRACK_H - 1);
     if (loopOn) g.fillRect(a, 0, b - a, 3);
   }
-  tlLayer = keepLayer(cv, tlLayer); tlKey = viewKey(cv);
+  tlLayer = keepLayer(cv, tlLayer); tlKey = viewKey(cv); tlDirty = false;
   timelineOverlay(g, w, h);
+  if (recording) tlDirty = true;
   const total = `/ ${fmtTime(projectDuration(), false)}`;
   if (total !== lastTotal) { $('clockTotal').textContent = total; lastTotal = total; }
 }
@@ -1967,6 +1995,7 @@ function bindControls() {
   $('tuneRoot').addEventListener('change', (e) => { P.tune.root = Number(e.target.value); P.tune.mask = null; renderKeys(); updateBeatUi(); markDirty(); scheduleTune(0); });
   $('tuneScale').addEventListener('change', (e) => { P.tune.scale = e.target.value; P.tune.mask = null; renderKeys(); updateBeatUi(); markDirty(); scheduleTune(0); });
   $('masterOn').addEventListener('change', (e) => { P.master.enabled = e.target.checked; markDirty(); scheduleRender(0); });
+  $('btnMeasure').addEventListener('click', async () => { stopPlayback(true); $('btnMeasure').disabled = true; await runRender(true); updateStats(); });
   document.querySelectorAll('input[name="target"]').forEach((r) => r.addEventListener('change', () => { P.master.target = Number(r.value); markDirty(); scheduleRender(0); }));
   $('bpm').addEventListener('change', (e) => {
     const v = Math.max(40, Math.min(220, Math.round(Number(e.target.value) || 90)));
@@ -2008,7 +2037,7 @@ function bindControls() {
   $('fileSession').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) restoreSession(f); });
 
   // tabs
-  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  const tabs = [...document.querySelectorAll('.rack [role="tab"]')];
   tabs.forEach((tab) => tab.addEventListener('click', () => {
     tabs.forEach((t) => { const on = t === tab; t.setAttribute('aria-selected', String(on)); $(t.getAttribute('aria-controls')).hidden = !on; });
   }));

@@ -13,7 +13,9 @@ const METER_MIN = -54, METER_MAX = 6;
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const fmtDb = (v) => `${v > 0 ? '+' : ''}${Number(v).toFixed(1)} dB`;
 const fmtPan = (v) => (v == 0 ? 'C' : v < 0 ? `L${-v}` : `R${v}`);
-const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+// Theme colours are read once: asking the browser for computed style on every meter frame forces a style pass.
+const cssCache = new Map();
+const css = (name) => { let v = cssCache.get(name); if (v === undefined) { v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); cssCache.set(name, v); } return v; };
 
 let api = null;
 const strips = new Map();
@@ -152,7 +154,10 @@ function levelOf(an) {
   for (let i = 0; i < n; i++) { const a = Math.abs(b[i]); if (a > pk) pk = a; }
   return Math.max(METER_MIN, 20 * Math.log10(pk + 1e-9));
 }
+// Readings move every frame; the meters are drawn at 30 per second, like a hardware console.
+let meterFrame = 0;
 function paintMeters(force = false) {
+  const draw = force || (meterFrame++ & 1) === 0;
   const G = api.graph();
   const playing = api.playing();
   const now = performance.now();
@@ -170,7 +175,7 @@ function paintMeters(force = false) {
     s.gr = gr < s.gr ? gr : Math.min(0, s.gr + 0.6);
     if (s.gr < -0.2) alive = true;
     if (s.clip && playing && red && red.limiter < -3) s.clip.classList.add('on');
-    drawMeter(s);
+    if (draw) drawMeter(s);
   }
   if (api.onFrame) api.onFrame(red, playing);
   if (playing || alive || force) { idleFrames = 0; }
@@ -179,35 +184,70 @@ function paintMeters(force = false) {
 }
 export function kickMeters() { idleFrames = 0; if (!raf) raf = requestAnimationFrame(() => paintMeters()); }
 
+// Each meter is two pictures made once per size: the dark LED ladder and the lit one. A frame draws the dark
+// ladder, then the lit one cropped to the level: two image copies instead of a gradient and a loop of segments.
+// Nothing is drawn when the reading has not moved.
+const ladders = new Map();
+function ladder(w, h, bars, bw, dpr) {
+  const key = `${w}x${h}x${bars}x${dpr}`;
+  let L = ladders.get(key);
+  if (L) return L;
+  const mk = (lit) => {
+    const c = document.createElement('canvas'); c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const y = (db) => h - ((Math.max(METER_MIN, Math.min(METER_MAX, db)) - METER_MIN) / (METER_MAX - METER_MIN)) * h;
+    const cyan = css('--cyan') || '#22d3ee', yellow = css('--yellow') || '#fbbf24', redc = css('--red') || '#ef4444';
+    for (let k = 0; k < bars; k++) {
+      const x = k * (bw + 2);
+      if (lit) {
+        const grad = g.createLinearGradient(0, h, 0, 0);
+        grad.addColorStop(0, cyan); grad.addColorStop(Math.max(0, (-12 - METER_MIN) / (METER_MAX - METER_MIN)), cyan);
+        grad.addColorStop((-4 - METER_MIN) / (METER_MAX - METER_MIN), yellow); grad.addColorStop((0 - METER_MIN) / (METER_MAX - METER_MIN), redc); grad.addColorStop(1, redc);
+        g.fillStyle = grad;
+      } else g.fillStyle = '#0a0a0f';
+      g.fillRect(x, 0, bw, h);
+      g.fillStyle = 'rgba(10,10,15,.55)';
+      for (let yy = h - 3; yy > 0; yy -= 4) g.fillRect(x, yy, bw, 1);
+    }
+    if (!lit) { g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(0, y(0), bars * (bw + 2) - 2, 1); }
+    return c;
+  };
+  if (ladders.size > 24) ladders.clear();
+  L = { off: mk(false), on: mk(true) };
+  ladders.set(key, L);
+  return L;
+}
 function drawMeter(s) {
   const cv = s.meter;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const w = cv.clientWidth, h = cv.clientHeight;
   if (!w || !h) return;
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const sized = cv.width === Math.round(w * dpr) && cv.height === Math.round(h * dpr);
+  // the same reading as last frame: leave the canvas alone
+  const sig = `${(s.lv[0] * 4) | 0},${(s.lv[1] * 4) | 0},${(s.hold[0] * 2) | 0},${(s.hold[1] * 2) | 0},${(s.gr * 4) | 0}`;
+  if (sized && s.drawn === sig) return;
+  if (!sized) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  s.drawn = sig;
   const g = cv.getContext('2d');
-  g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.clearRect(0, 0, w, h);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, cv.width, cv.height);
   const bars = s.ch.stereo ? 2 : 1;
   const grW = s.ch.gr ? 4 : 0;
   const bw = (w - grW - (bars - 1) * 2 - (grW ? 3 : 0)) / bars;
   const y = (db) => h - ((Math.max(METER_MIN, Math.min(METER_MAX, db)) - METER_MIN) / (METER_MAX - METER_MIN)) * h;
-  const cyan = css('--cyan') || '#22d3ee', yellow = css('--yellow') || '#fbbf24', redc = css('--red') || '#ef4444';
+  const L = ladder(w - grW - (grW ? 3 : 0), h, bars, bw, dpr);
+  g.drawImage(L.off, 0, 0);
+  for (let k = 0; k < bars; k++) {
+    const x = Math.round(k * (bw + 2) * dpr), bwp = Math.round(bw * dpr);
+    const top = Math.max(0, Math.floor(y(s.lv[k]) * dpr));
+    if (top < cv.height) g.drawImage(L.on, x, top, bwp, cv.height - top, x, top, bwp, cv.height - top);
+  }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const yellow = css('--yellow') || '#fbbf24', redc = css('--red') || '#ef4444';
   for (let k = 0; k < bars; k++) {
     const x = k * (bw + 2);
-    g.fillStyle = '#0a0a0f'; g.fillRect(x, 0, bw, h);
-    const top = y(s.lv[k]);
-    const grad = g.createLinearGradient(0, h, 0, 0);
-    grad.addColorStop(0, cyan); grad.addColorStop(Math.max(0, (-12 - METER_MIN) / (METER_MAX - METER_MIN)), cyan);
-    grad.addColorStop((-4 - METER_MIN) / (METER_MAX - METER_MIN), yellow); grad.addColorStop((0 - METER_MIN) / (METER_MAX - METER_MIN), redc); grad.addColorStop(1, redc);
-    g.fillStyle = grad; g.fillRect(x, top, bw, h - top);
-    // segment lines so it reads as an LED ladder
-    g.fillStyle = 'rgba(10,10,15,.55)';
-    for (let yy = h - 3; yy > 0; yy -= 4) g.fillRect(x, yy, bw, 1);
     if (s.hold[k] > METER_MIN + 1) { g.fillStyle = s.hold[k] > -1 ? redc : '#ededf2'; g.fillRect(x, Math.max(0, y(s.hold[k]) - 1), bw, 2); }
   }
-  // 0 dB line
-  g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(0, y(0), w - grW - (grW ? 3 : 0), 1);
   if (grW) {
     const x = w - grW;
     g.fillStyle = '#0a0a0f'; g.fillRect(x, 0, grW, h);

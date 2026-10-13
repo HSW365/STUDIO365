@@ -22,12 +22,15 @@ class Comp extends AudioWorkletProcessor {
     const input = inputs[0], output = outputs[0];
     if (!input || !input.length) return true;
     const thr = p.threshold[0], slope = 1 / p.ratio[0] - 1, knee = p.knee[0];
-    const att = coef(p.attack[0]), rel = coef(p.release[0]), mk = p.makeup[0];
-    const n = input[0].length, chs = input.length;
-    let env = this.env;
-    for (let i = 0; i < n; i++) {
+    // The detector and gain math run once every K samples; the gain glides sample by sample in between.
+    const K = 16;
+    const att = Math.pow(coef(p.attack[0]), K), rel = Math.pow(coef(p.release[0]), K), mk = p.makeup[0];
+    const n = input[0].length, chs = input.length, outs = output.length;
+    let env = this.env, gPrev = this.gPrev === undefined ? db2g(env + mk) : this.gPrev;
+    for (let i0 = 0; i0 < n; i0 += K) {
+      const i1 = Math.min(n, i0 + K);
       let pk = 0;
-      for (let c = 0; c < chs; c++) { const a = Math.abs(input[c][i]); if (a > pk) pk = a; }
+      for (let c = 0; c < chs; c++) { const x = input[c]; for (let i = i0; i < i1; i++) { const a = x[i] < 0 ? -x[i] : x[i]; if (a > pk) pk = a; } }
       const over = 20 * Math.log10(pk + 1e-9) - thr;
       let g;
       if (2 * over < -knee) g = 0;
@@ -35,10 +38,15 @@ class Comp extends AudioWorkletProcessor {
       else g = slope * over;
       env = g < env ? att * env + (1 - att) * g : rel * env + (1 - rel) * g;
       if (env < this.minGr) this.minGr = env;
-      const gain = db2g(env + mk);
-      for (let c = 0; c < output.length; c++) output[c][i] = (input[c] || input[0])[i] * gain;
+      const gNext = db2g(env + mk), step = (gNext - gPrev) / (i1 - i0);
+      for (let c = 0; c < outs; c++) {
+        const x = input[c] || input[0], o = output[c];
+        let gg = gPrev;
+        for (let i = i0; i < i1; i++) { gg += step; o[i] = x[i] * gg; }
+      }
+      gPrev = gNext;
     }
-    this.env = env;
+    this.env = env; this.gPrev = gPrev;
     this.count += n;
     if (this.count >= 2048) { this.port.postMessage(this.minGr); this.minGr = 0; this.count = 0; }
     return true;
@@ -62,29 +70,38 @@ class DeEss extends AudioWorkletProcessor {
     if (!input || !input.length) return true;
     const amount = p.amount[0];
     const a = 1 - Math.exp(-2 * Math.PI * p.freq[0] / sampleRate);
-    const det = coef(0.004), att = coef(0.001), rel = coef(0.06);
-    const n = input[0].length;
-    for (let i = 0; i < n; i++) {
-      let hi2 = 0, full2 = 0;
-      for (let c = 0; c < output.length; c++) {
-        const x = (input[c] || input[0])[i];
-        this.lp[c] += (x - this.lp[c]) * a; this.lp2[c] += (this.lp[c] - this.lp2[c]) * a;
-        const hi = x - this.lp2[c];
-        hi2 += hi * hi; full2 += x * x;
-        output[c][i] = hi; // stash the top band; the low band is rebuilt below
+    const K = 16;
+    const det = coef(0.004), att = Math.pow(coef(0.001), K), rel = Math.pow(coef(0.06), K);
+    const n = input[0].length, outs = output.length;
+    const lp = this.lp, lp2 = this.lp2;
+    let eh = this.eh, ef = this.ef, gPrev = this.gPrev === undefined ? 1 : this.gPrev;
+    for (let i0 = 0; i0 < n; i0 += K) {
+      const i1 = Math.min(n, i0 + K);
+      for (let i = i0; i < i1; i++) {
+        let hi2 = 0, full2 = 0;
+        for (let c = 0; c < outs; c++) {
+          const x = (input[c] || input[0])[i];
+          lp[c] += (x - lp[c]) * a; lp2[c] += (lp[c] - lp2[c]) * a;
+          const hi = x - lp2[c];
+          hi2 += hi * hi; full2 += x * x;
+          output[c][i] = hi;   // stash the top band; the low band is rebuilt below
+        }
+        eh = det * eh + (1 - det) * hi2; ef = det * ef + (1 - det) * full2;
       }
-      this.eh = det * this.eh + (1 - det) * hi2; this.ef = det * this.ef + (1 - det) * full2;
-      const r = Math.sqrt(this.eh / (this.ef + 1e-12));
+      const r = Math.sqrt(eh / (ef + 1e-12));
       const t = Math.max(0, Math.min(1, (r - 0.3) / 0.35));
       const want = amount * t * t * (3 - 2 * t);
       this.red = want > this.red ? att * this.red + (1 - att) * want : rel * this.red + (1 - rel) * want;
       if (-this.red < this.minGr) this.minGr = -this.red;
-      const g = db2g(-this.red);
-      for (let c = 0; c < output.length; c++) {
-        const x = (input[c] || input[0])[i], hi = output[c][i];
-        output[c][i] = (x - hi) + hi * g;
+      const gNext = db2g(-this.red), step = (gNext - gPrev) / (i1 - i0);
+      for (let c = 0; c < outs; c++) {
+        const x = input[c] || input[0], o = output[c];
+        let gg = gPrev;
+        for (let i = i0; i < i1; i++) { gg += step; const hi = o[i]; o[i] = (x[i] - hi) + hi * gg; }
       }
+      gPrev = gNext;
     }
+    this.eh = eh; this.ef = ef; this.gPrev = gPrev;
     this.count += n;
     if (this.count >= 2048) { this.port.postMessage(this.minGr); this.minGr = 0; this.count = 0; }
     return true;
@@ -114,10 +131,11 @@ class Limiter extends AudioWorkletProcessor {
     const want = db2g(p.gain[0]), ceil = db2g(p.ceiling[0]);
     const rel = coef(0.09);
     const n = output[0].length, L = this.L;
+    let gMin = 1;
     for (let i = 0; i < n; i++) {
       this.pre += (want - this.pre) * 0.0005; // glide to a new mastering level
       let pk = 0;
-      const frame = [0, 0];
+      const frame = this.frame || (this.frame = new Float32Array(2));
       for (let c = 0; c < 2; c++) {
         const ch = input && input.length ? (input[c] || input[0]) : null;
         const v = ch ? ch[i] * this.pre : 0;
@@ -129,7 +147,7 @@ class Limiter extends AudioWorkletProcessor {
       else this.target = need + (this.target - need) * rel;
       if (this.target > 1) this.target = 1;
       this.g = this.target < this.g ? this.sm * this.g + (1 - this.sm) * this.target : this.target;
-      const gdb = 20 * Math.log10(this.g); if (gdb < this.minGr) this.minGr = gdb;
+      if (this.g < gMin) gMin = this.g;
       for (let c = 0; c < output.length; c++) {
         const b = this.buf[c] || this.buf[0];
         let o = b[this.w] * this.g;
@@ -139,6 +157,7 @@ class Limiter extends AudioWorkletProcessor {
       }
       this.w = (this.w + 1) % L;
     }
+    const gdb = 20 * Math.log10(gMin); if (gdb < this.minGr) this.minGr = gdb;
     this.count += n;
     if (this.count >= 2048) { this.port.postMessage(this.minGr); this.minGr = 0; this.count = 0; }
     return true;

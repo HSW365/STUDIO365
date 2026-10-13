@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="assets/css/studio.css">
   <link rel="stylesheet" href="assets/css/console.css">
   <link rel="stylesheet" href="assets/css/pro.css">
+  <link rel="stylesheet" href="assets/css/shell.css">
   <script>
     // If anything breaks, say so on screen instead of leaving dead buttons.
     (function () {
@@ -158,6 +159,19 @@
           <canvas id="pitchCanvas" aria-label="Pitch editor. Drag a note up or down to place it. Double-click a note to put it back."></canvas>
           <p class="pitch-hint" id="pitchHint">Drag a note up or down to place it by hand. Double-click puts it back. Alt-click leaves that note untuned.<span class="pro-pill">Plus</span></p>
         </div>
+      </div>
+
+      <div class="dock-bar" id="dockBar">
+        <div class="dock-grip" id="dockGrip" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the bottom panel" tabindex="0"></div>
+        <div class="dock-tabs" role="tablist" aria-label="Bottom panel">
+          <button type="button" role="tab" class="dock-tab" data-dock="mixer" aria-selected="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18M12 3v18M18 3v18"/><rect x="4" y="13" width="4" height="3" rx="1"/><rect x="10" y="7" width="4" height="3" rx="1"/><rect x="16" y="11" width="4" height="3" rx="1"/></svg>Mixer</button>
+          <button type="button" role="tab" class="dock-tab" data-dock="takes" aria-selected="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Takes<b class="dock-count" id="dockTakeCount"></b></button>
+        </div>
+        <button type="button" class="dock-toggle" id="dockToggle" aria-expanded="true" title="Show or hide the bottom panel (M)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
       </div>
 
       <section class="console" aria-label="Mixing console">
@@ -351,6 +365,7 @@
           <div><span>Peak</span><b id="statPeak">–</b></div>
           <div><span>Limiting</span><b id="statGr">–</b></div>
         </div>
+        <button class="btn ghost full" type="button" id="btnMeasure" disabled>Measure the master</button>
         <p class="note">Peaks are held under -1 dB so streaming encoders don't distort your track.</p>
         <button class="btn ghost full" type="button" id="btnCheck" disabled>Run the A&amp;R365 record check<span class="pro-pill">Pro</span></button>
       </section>
@@ -463,8 +478,16 @@
   <input type="file" id="fileVocal" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.aac" hidden>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <nav class="view-nav" id="viewNav" aria-label="Studio views">
+    <button type="button" data-view="tracks" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h3M9 7h12M3 12h8M14 12h7M3 17h5M11 17h10"/></svg><span>Tracks</span></button>
+    <button type="button" data-view="mixer" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18M12 3v18M18 3v18"/><rect x="4" y="13" width="4" height="3" rx="1"/><rect x="10" y="7" width="4" height="3" rx="1"/><rect x="16" y="11" width="4" height="3" rx="1"/></svg><span>Mixer</span></button>
+    <button type="button" data-view="takes" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Takes</span></button>
+    <button type="button" data-view="rack" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18c3-8 5-12 8-12s5 6 8 6"/><circle cx="12" cy="6" r="1.6"/></svg><span>Tune &amp; FX</span></button>
+  </nav>
+
   <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js" defer></script>
   <script src="config.js"></script>
-  <script type="module" src="assets/js/studio.js?v=20261003"></script>
+  <script type="module" src="assets/js/studio.js?v=20261013"></script>
+  <script type="module" src="assets/js/shell.js?v=20261013"></script>
 </body>
 </html>
