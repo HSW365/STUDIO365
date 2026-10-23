@@ -5,7 +5,7 @@ import * as Edit from './edit.js';
 import { initConsole, rebuildConsole, syncConsole, selectStrip, kickMeters, initEq, drawEq, selectBand, selectedBand, EQ_BANDS, CHANNELS } from './console.js';
 import { vocalBeatBalance, BALANCE_TARGET } from './check.js';
 import * as Store from './store.js';
-import { initPro, isPro, isMember, planName, requirePro, openPro, FREE_PROJECTS } from './pro.js';
+import { initPro, isPro, isMember, planName, requirePro, openPro, FREE_PROJECTS } from './pro.js?v=20261023';
 import { PRESETS } from './presets.js';
 import * as Pack from './pack.js';
 import { work, cancelJobs, isCancel } from './jobs.js';

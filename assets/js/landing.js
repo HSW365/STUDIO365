@@ -1,5 +1,5 @@
 // HSW365studio landing: live A/B pitch-correction demo, Pro checkout, nav state.
-import { initPro, openPro, planName } from './pro.js';
+import { initPro, openPro, planName } from './pro.js?v=20261023';
 const $ = (id) => document.getElementById(id);
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const A_MINOR = [0, 2, 3, 5, 7, 8, 10].map((p) => (p + 9) % 12);

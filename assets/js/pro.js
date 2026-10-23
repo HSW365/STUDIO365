@@ -33,8 +33,27 @@ export const prices = { monthly: PRICE, first: FIRST, cashtag: CASHTAG };
 export const cashLink = (amt) => `https://cash.app/${encodeURIComponent(CASHTAG).replace('%24', '$')}/${amt}`;
 export const buyLink = (pl) => (pl.variant ? `https://hsw365.co/cart/${pl.variant}:1` : cfg.SHOP_PRODUCT_URL || 'https://hsw365.co');
 
+// ---- owner access: studio.html#owner=CODE once per device, checked against cfg.OWNER_HASH
+const OWNER_KEY = 'studio365:owner';
+async function sha256(t) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+async function ownerCheck() {
+  if (!cfg.OWNER_HASH) return false;
+  const m = location.hash.match(/owner=([^&]+)/);
+  if (m) {
+    const code = decodeURIComponent(m[1]);
+    if ((await sha256(code)) === cfg.OWNER_HASH) { try { localStorage.setItem(OWNER_KEY, code); } catch { /* private mode */ } }
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  let code = null; try { code = localStorage.getItem(OWNER_KEY); } catch { /* private mode */ }
+  return !!code && (await sha256(code)) === cfg.OWNER_HASH;
+}
+export const isOwner = () => !!state.owner;
+
 async function refresh() {
-  state = await License.status();
+  state = (await ownerCheck()) ? { pro: true, plan: 'pro', owner: true } : await License.status();
   listeners.forEach((fn) => { try { fn(state); } catch (e) { console.error(e); } });
   paint();
   return state;

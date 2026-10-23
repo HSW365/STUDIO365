@@ -30,6 +30,11 @@ window.STUDIO365_CONFIG = {
     y: "iKtrkat8OLkjCsViZKfnFIl3uxHMO0VV0W6qjKBj6v8"
   },
 
+  // ---- Owner access ----------------------------------------------------------------
+  // SHA-256 of the owner unlock code. Opening studio.html#owner=<code> once gives that device
+  // every plan feature with no project limit, permanently. Only the hash is public.
+  OWNER_HASH: "7e2be743e1df502c8ca8c0b38cf8eee1bbfb7fc7520cf6702f31798152046a4e",
+
   // ---- Optional: Supabase ----------------------------------------------------------
   // Leave as-is and Pro requests go out by email instead. To log them in a table,
   // run supabase.sql and paste the project URL and anon/publishable key here.
