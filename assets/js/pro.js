@@ -52,8 +52,16 @@ async function ownerCheck() {
 }
 export const isOwner = () => !!state.owner;
 
+// One-step join (HSW365 Join): a member who signed up and paid in the app counts like a key holder.
+function joinState() {
+  const j = window.HSWJoin && window.HSWJoin.state;
+  if (!j || !j.active) return null;
+  const exp = j.paid_until ? new Date(j.paid_until).getTime() : Date.now() + 3650 * 864e5;
+  return { pro: true, plan: ['starter', 'plus', 'pro'].includes(j.plan) ? j.plan : 'pro', email: j.email, expires: exp, daysLeft: Math.ceil((exp - Date.now()) / 864e5), joined: true };
+}
 async function refresh() {
   state = (await ownerCheck()) ? { pro: true, plan: 'pro', owner: true } : await License.status();
+  if (!state.pro) state = joinState() || state;
   listeners.forEach((fn) => { try { fn(state); } catch (e) { console.error(e); } });
   paint();
   return state;
@@ -72,6 +80,8 @@ async function takeLinkKey() {
 // onLink fires when a link key is used while the page is already open.
 export async function initPro({ onChange, onLink } = {}) {
   if (onChange) listeners.push(onChange);
+  if (window.HSWJoinReady) { try { await window.HSWJoinReady; } catch { /* offline */ } }
+  window.addEventListener('hswjoin', () => refresh());
   const fromLink = await takeLinkKey();
   await refresh();
   window.addEventListener('hashchange', async () => {
@@ -184,6 +194,8 @@ function paint() {
 
 // feature: what the person just reached for. need: the lowest plan that includes it.
 export function openPro(feature, need = null) {
+  // Sign up, pick the plan and pay right here (no store checkout, no waiting on a key).
+  if (window.HSWJoin && (!state.pro || state.joined)) { window.HSWJoin.open(need || (feature ? 'plus' : 'plus')); return; }
   if (!dlg) build();
   if (feature && !need) need = 'plus';
   const $ = (id) => dlg.querySelector('#' + id);
