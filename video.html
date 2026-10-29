@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>Music Video · HSW365studio</title>
+  <meta name="description" content="Upload a photo of yourself and your song, describe the video, and get a music video or short film starring you.">
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <meta property="og:title" content="Your song. Your face. Your video. · HSW365studio">
+  <meta property="og:image" content="assets/img/og.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <style>
+    :root { --acc: #22d3ee; --hot: #ec4899; }
+    body { background: radial-gradient(1200px 700px at 85% -10%, rgba(236,72,153,.13), transparent 60%),
+                       radial-gradient(900px 600px at -10% 10%, rgba(34,211,238,.10), transparent 60%), var(--ink); min-height: 100vh; }
+    .bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px; padding: 12px clamp(16px, 4vw, 40px);
+           background: rgba(10,10,15,.78); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+    .bar .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font: 800 20px/1 var(--display); letter-spacing: .02em; }
+    .bar .brand svg { width: 22px; height: 22px; fill: var(--acc); }
+    .bar .sp { flex: 1; }
+    .bar a.link { color: var(--text-2); text-decoration: none; font-weight: 600; font-size: 14px; }
+    .bar a.link:hover { color: var(--text); }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+
+    .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(24px, 5vw, 72px); align-items: center; padding: clamp(36px, 7vw, 88px) 0 clamp(28px, 4vw, 48px); }
+    .eyebrow { font: 700 12px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--acc); }
+    h1 { font: 900 clamp(54px, 9vw, 112px)/.86 var(--display); text-transform: uppercase; letter-spacing: -.01em; margin: 16px 0 18px; }
+    h1 .o { color: transparent; -webkit-text-stroke: 2px var(--hot); }
+    .lede { color: var(--text-2); font-size: clamp(16px, 1.6vw, 19px); max-width: 560px; margin: 0; }
+    .how { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+    .how span { font: 600 13px/1 var(--body); color: var(--text-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 9px 14px; }
+    .how b { color: var(--acc); font-family: var(--mono); margin-right: 6px; }
+    .reel { position: relative; aspect-ratio: 9/16; max-height: 560px; justify-self: center; width: min(100%, 315px); border-radius: 26px; overflow: hidden;
+            border: 1px solid var(--line-2); box-shadow: 0 40px 120px -30px rgba(236,72,153,.45), 0 0 0 8px rgba(255,255,255,.02);
+            background: linear-gradient(160deg, #1b1030, #07131a 60%, #050509); }
+    .reel .beam { position: absolute; inset: -40%; background: conic-gradient(from 180deg at 50% 50%, transparent 0 60%, rgba(34,211,238,.28) 70%, transparent 80%, rgba(236,72,153,.3) 90%, transparent);
+                  animation: spin 9s linear infinite; filter: blur(30px); }
+    @keyframes spin { to { transform: rotate(1turn); } }
+    .reel .face { position: absolute; left: 50%; top: 38%; width: 58%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
+                  background: #111 center/cover no-repeat; border: 2px solid rgba(255,255,255,.18); box-shadow: 0 0 60px rgba(34,211,238,.35); display: grid; place-items: center; color: var(--muted); font: 700 12px/1.4 var(--mono); text-align: center; }
+    .reel .eq { position: absolute; left: 12%; right: 12%; bottom: 23%; height: 54px; display: flex; gap: 4px; align-items: flex-end; }
+    .reel .eq i { flex: 1; background: linear-gradient(var(--hot), var(--acc)); border-radius: 2px; animation: eq 1s ease-in-out infinite; }
+    @keyframes eq { 0%,100% { height: 18%; } 50% { height: 100%; } }
+    .reel .cap { position: absolute; left: 22px; bottom: 34px; right: 22px; }
+    .reel .cap b { display: block; font: 900 38px/.9 var(--display); text-transform: uppercase; }
+    .reel .cap span { font: 700 18px/1.2 var(--display); color: var(--hot); text-transform: uppercase; letter-spacing: .04em; }
+    @media (prefers-reduced-motion: reduce) { .reel .beam, .reel .eq i { animation: none; } }
+
+    .maker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 8px 0 18px; }
+    .card { background: linear-gradient(180deg, rgba(255,255,255,.025), transparent), var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); padding: 20px; }
+    .card h2 { display: flex; align-items: center; gap: 10px; font: 800 24px/1 var(--display); text-transform: uppercase; letter-spacing: .02em; margin: 0 0 14px; }
+    .card h2 .n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 700 13px/1 var(--mono); background: var(--cyan-dim); color: var(--acc); }
+    .drop { position: relative; display: grid; place-items: center; text-align: center; min-height: 210px; border: 1.5px dashed var(--line-2); border-radius: 14px; padding: 18px;
+            color: var(--text-2); cursor: pointer; transition: border-color .15s, background .15s; overflow: hidden; }
+    .drop:hover, .drop.over { border-color: var(--acc); background: rgba(34,211,238,.05); }
+    .drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .drop .ic { width: 44px; height: 44px; margin: 0 auto 10px; stroke: var(--acc); fill: none; stroke-width: 1.6; }
+    .drop strong { display: block; color: var(--text); font-weight: 600; }
+    .drop small { color: var(--muted); font-size: 12.5px; }
+    .drop.has { border-style: solid; border-color: var(--line-2); padding: 0; }
+    .drop .pv { position: absolute; inset: 0; background: #000 center/cover no-repeat; }
+    .drop .chg { position: absolute; right: 10px; bottom: 10px; z-index: 2; font: 700 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; background: rgba(0,0,0,.7); border: 1px solid var(--line-2); padding: 8px 10px; border-radius: 999px; color: var(--text); pointer-events: none; }
+    .song { display: none; flex-direction: column; gap: 10px; width: 100%; padding: 18px; text-align: left; }
+    .drop.has .song { display: flex; }
+    .song .nm { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .song canvas { width: 100%; height: 70px; }
+    .song audio { width: 100%; height: 36px; position: relative; z-index: 3; }
+    .tip { margin: 10px 2px 0; color: var(--muted); font-size: 12.5px; }
+
+    .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px; padding: 5px; margin-bottom: 14px; }
+    .seg button { border: 0; background: transparent; padding: 10px 8px; border-radius: 8px; font: 800 17px/1 var(--display); text-transform: uppercase; letter-spacing: .03em; color: var(--text-2); cursor: pointer; }
+    .seg button[aria-pressed="true"] { background: var(--acc); color: #04141a; }
+    textarea, .field input { width: 100%; background: var(--ink-2); border: 1px solid var(--line-2); border-radius: 12px; padding: 12px 14px; color: var(--text); font: 15px/1.5 var(--body); resize: vertical; }
+    textarea { min-height: 120px; }
+    textarea:focus, .field input:focus { outline: none; border-color: var(--acc); box-shadow: 0 0 0 3px var(--cyan-dim); }
+    .cnt { text-align: right; color: var(--muted); font: 11px/1 var(--mono); margin-top: 6px; }
+    .ideas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ideas button { background: transparent; border: 1px solid var(--line-2); color: var(--text-2); border-radius: 999px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+    .ideas button:hover { color: var(--text); border-color: var(--text-2); }
+
+    .opts { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; }
+    .lbl { display: block; font: 700 11px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+    .styles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .styles button { position: relative; text-align: left; border: 1px solid var(--line-2); background: var(--ink-2); border-radius: 12px; padding: 34px 10px 9px; cursor: pointer; font: 800 15px/1 var(--display); text-transform: uppercase; letter-spacing: .03em; color: var(--text-2); overflow: hidden; }
+    .styles button::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 26px; background: var(--sw); opacity: .85; }
+    .styles button[aria-pressed="true"] { color: var(--text); border-color: var(--acc); box-shadow: 0 0 0 2px var(--cyan-dim); }
+    .lens { display: flex; gap: 6px; }
+    .lens button { flex: 1; border: 1px solid var(--line-2); background: var(--ink-2); color: var(--text-2); border-radius: 10px; padding: 12px 0; font: 700 14px/1 var(--mono); cursor: pointer; }
+    .lens button[aria-pressed="true"] { border-color: var(--acc); color: var(--acc); background: var(--cyan-dim); }
+    .field { margin-bottom: 10px; }
+    .go { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: space-between; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .ok { display: flex; gap: 10px; align-items: flex-start; color: var(--text-2); font-size: 13.5px; max-width: 560px; }
+    .ok input { margin-top: 3px; accent-color: var(--acc); width: 17px; height: 17px; flex: none; }
+    .make { min-height: 58px; padding: 0 34px; border-radius: 14px; border: 0; cursor: pointer; font: 900 22px/1 var(--display); text-transform: uppercase; letter-spacing: .04em; color: #050508;
+            background: linear-gradient(100deg, var(--acc), #a5f3fc 45%, var(--hot)); box-shadow: 0 14px 44px -12px rgba(236,72,153,.6); }
+    .make[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+    .quota { font: 700 12px/1.5 var(--mono); color: var(--text-2); letter-spacing: .04em; }
+    .quota b { color: var(--acc); }
+    .err { color: #fca5a5; font-size: 14px; min-height: 1.2em; margin-top: 10px; }
+
+    .lib { margin: 46px 0 80px; }
+    .lib-h { display: flex; align-items: end; justify-content: space-between; margin-bottom: 14px; }
+    .lib-h h2 { font: 900 40px/1 var(--display); text-transform: uppercase; margin: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+    .vid { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); aspect-ratio: 9/16; }
+    .vid .po { position: absolute; inset: 0; background: linear-gradient(160deg, #1a1030, #071318) center/cover no-repeat; }
+    .vid .sh { position: absolute; inset: 0; background: linear-gradient(transparent 45%, rgba(0,0,0,.88)); }
+    .vid .in { position: absolute; left: 12px; right: 12px; bottom: 12px; }
+    .vid .k { font: 700 10px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--acc); }
+    .vid .t { font: 800 22px/1 var(--display); text-transform: uppercase; margin: 6px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vid .st { font-size: 12.5px; color: var(--text-2); min-height: 1.3em; }
+    .vid .pb { height: 4px; border-radius: 4px; background: rgba(255,255,255,.12); margin-top: 8px; overflow: hidden; }
+    .vid .pb i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--acc), var(--hot)); transition: width .6s; }
+    .vid .play { position: absolute; inset: 0; border: 0; background: transparent; cursor: pointer; }
+    .vid .play svg { position: absolute; left: 50%; top: 42%; width: 64px; height: 64px; transform: translate(-50%, -50%); filter: drop-shadow(0 6px 20px rgba(0,0,0,.6)); }
+    .vid .acts { display: flex; gap: 6px; margin-top: 10px; position: relative; z-index: 2; }
+    .vid .acts a, .vid .acts button { flex: 1; text-align: center; text-decoration: none; font: 700 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text); border: 1px solid var(--line-2); background: rgba(0,0,0,.45); border-radius: 999px; padding: 8px 0; cursor: pointer; }
+    .vid.rendering .po { animation: pulse 2.2s ease-in-out infinite; }
+    @keyframes pulse { 50% { filter: brightness(1.35) saturate(1.3); } }
+    .empty { border: 1px dashed var(--line-2); border-radius: 16px; padding: 34px; text-align: center; color: var(--muted); }
+
+    .modal { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; background: rgba(0,0,0,.86); padding: 18px; }
+    .modal.on { display: grid; }
+    .modal video { max-height: 88vh; max-width: 100%; aspect-ratio: 9/16; border-radius: 18px; background: #000; }
+    .modal .x { position: absolute; top: 14px; right: 16px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: rgba(0,0,0,.6); color: #fff; font-size: 22px; cursor: pointer; }
+
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+      .reel { display: none; }
+      .maker, .opts { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="./"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="20" rx="1"/><rect x="17" y="9" width="4" height="14" rx="1"/><rect x="24" y="3" width="4" height="26" rx="1"/></svg>HSW365studio</a>
+    <span class="sp"></span>
+    <a class="link" href="studio.html">Studio</a>
+    <a class="link" href="#mine">My videos</a>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">New · Music Video</div>
+        <h1>Your song.<br>Your face.<br><span class="o">Your video.</span></h1>
+        <p class="lede">Upload a photo of yourself and your song, tell us the video in your head, and iRun films it: you performing your record, lips on the vocal, cut on the beat. Or turn it into a short film with your song as the score, or a UGC ad of you talking to camera like a real creator post.</p>
+        <div class="how"><span><b>01</b>Your photo</span><span><b>02</b>Your song</span><span><b>03</b>Your vision</span><span><b>04</b>Watch it</span></div>
+      </div>
+      <div class="reel" aria-hidden="true">
+        <div class="beam"></div>
+        <div class="face" id="reelFace">YOUR<br>FACE<br>HERE</div>
+        <div class="eq" id="eq"></div>
+        <div class="cap"><b id="reelArtist">YOUR NAME</b><span id="reelTitle">“YOUR SONG”</span></div>
+      </div>
+    </section>
+
+    <section class="maker" aria-label="Make a video">
+      <div class="card">
+        <h2><span class="n">1</span>Your photo</h2>
+        <label class="drop" id="photoDrop">
+          <input type="file" id="photoIn" accept="image/jpeg,image/png,image/webp" aria-label="Upload a photo of yourself">
+          <div class="pv" id="photoPv" hidden></div>
+          <span class="chg" hidden>Change</span>
+          <div class="ph">
+            <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+            <strong>Drop a photo of you</strong>
+            <small>Clear face, good light, looking at the camera. JPG or PNG.</small>
+          </div>
+        </label>
+        <p class="tip">One person in the photo. No sunglasses or masks. This face stars in every shot.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">2</span><span id="songH">Your song</span></h2>
+        <label class="drop" id="songDrop">
+          <input type="file" id="songIn" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" aria-label="Upload your song">
+          <div class="ph">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+            <strong>Drop your song</strong>
+            <small>MP3, WAV, M4A. Your bounce from the studio works.</small>
+          </div>
+          <div class="song"><span class="nm" id="songName"></span><canvas id="wave" width="600" height="140"></canvas><audio id="songAu" controls preload="metadata"></audio></div>
+          <span class="chg" hidden>Change</span>
+        </label>
+        <p class="tip">We use the strongest part of the song for the length you pick, and your audio stays exactly as you mixed it.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">3</span>Your vision</h2>
+        <div class="seg" role="group" aria-label="What to make">
+          <button type="button" data-kind="music_video" aria-pressed="true">Music video</button>
+          <button type="button" data-kind="short_film" aria-pressed="false">Short film</button>
+          <button type="button" data-kind="ugc" aria-pressed="false">UGC ad</button>
+        </div>
+        <label class="sr-only" for="desc">Describe the video</label>
+        <textarea id="desc" maxlength="2000" placeholder="Me performing on a rooftop at night over the city, then riding through my old block in a black Charger, flashbacks of coming up from nothing, ending on stage with the crowd going crazy."></textarea>
+        <div class="cnt"><span id="descN">0</span> / 2000</div>
+        <div class="ideas" id="ideas"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="opts">
+        <div>
+          <span class="lbl">Look</span>
+          <div class="styles" id="styles"></div>
+        </div>
+        <div>
+          <span class="lbl">Length</span>
+          <div class="lens" id="lens"></div>
+          <span class="lbl" style="margin-top:18px">Credits</span>
+          <div class="field"><label class="sr-only" for="artist">Artist name</label><input id="artist" maxlength="80" placeholder="Artist name"></div>
+          <div class="field"><label class="sr-only" for="title">Song title</label><input id="title" maxlength="80" placeholder="Song title"></div>
+        </div>
+        <div>
+          <span class="lbl">What you get</span>
+          <p class="tip" id="getText" style="margin:0 0 10px;font-size:14px;color:var(--text-2)"></p>
+          <p class="tip" style="margin:0">Vertical 1080×1920, ready for Instagram Reels, TikTok and Shorts. Ends with your name, the song and a scan-to-make-yours code.</p>
+        </div>
+      </div>
+      <div class="go">
+        <label class="ok"><input type="checkbox" id="rights"> <span>This is my photo (or I have permission to use this person's likeness) and I own this song or have the rights to use it.</span></label>
+        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+          <span class="quota" id="quota"></span>
+          <button class="make" id="make" type="button" disabled>Make my video</button>
+        </div>
+      </div>
+      <div class="err" id="err" role="alert"></div>
+    </section>
+
+    <section class="lib" id="mine">
+      <div class="lib-h"><h2>My videos</h2><span class="quota" id="libNote"></span></div>
+      <div class="grid" id="grid"><div class="empty">Your videos show up here while they film and when they're ready.</div></div>
+    </section>
+  </main>
+
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Watch video">
+    <button class="x" type="button" id="mx" aria-label="Close">×</button>
+    <video id="mv" controls playsinline></video>
+  </div>
+
+  <script src="https://hsw365.github.io/iRUN/join/hsw-join.js"></script>
+  <script>window.HSWJoinReady = HSWJoin.init({ app: "studio365", name: "HSW365studio", accent: "#22d3ee", tagline: "Make music videos starring you. Record, tune, mix and master in your browser.", defaultPlan: "plus", onChange: () => window.dispatchEvent(new Event("hswjoin")) });</script>
+  <script>
+  (function () {
+    const SB = "https://lsxdlmrjrcivxwgfkpop.supabase.co";
+    const FN = SB + "/functions/v1/irun-video";
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const STYLES = [
+      ["cinematic", "Cinematic", "linear-gradient(90deg,#0e7490,#22d3ee,#164e63)"],
+      ["street", "Street", "linear-gradient(90deg,#7f1d1d,#ef4444,#1f2937)"],
+      ["neon", "Neon", "linear-gradient(90deg,#ec4899,#8b5cf6,#22d3ee)"],
+      ["luxury", "Luxury", "linear-gradient(90deg,#78350f,#eab308,#fef3c7)"],
+      ["dark", "Dark", "linear-gradient(90deg,#020617,#475569,#0f172a)"],
+      ["dreamy", "Dreamy", "linear-gradient(90deg,#fbcfe8,#fbbf24,#fde68a)"],
+      ["vintage", "Vintage 90s", "linear-gradient(90deg,#9a3412,#f97316,#fcd34d)"],
+      ["anime", "Anime", "linear-gradient(90deg,#4f46e5,#818cf8,#f472b6)"],
+      ["performance", "Live stage", "linear-gradient(90deg,#0f172a,#22d3ee,#a855f7)"],
+    ];
+    const IDEAS = {
+      music_video: ["Rooftop at night over the city", "Riding through my old block", "Flashbacks of coming up", "Performing in the rain", "Stage with the crowd going crazy", "Luxury penthouse flex"],
+      ugc: ["My new hoodie drop, link in bio", "Why I use HSW365studio to record", "Unboxing my merch", "Honest review of my app", "Day in my life as an artist", "3 reasons you need this"],
+      short_film: ["I come home from the army and my block changed", "One night that changed everything", "From the corner to the big stage", "A love story that falls apart", "My mom's kitchen, the day I made it"],
+    };
+    const S = { kind: "music_video", style: "cinematic", length: 60, photo: null, song: null, songDur: 0, busy: false, quota: null, jobs: [] };
+
+    // ---------- reel eq bars
+    for (let i = 0; i < 18; i++) { const b = document.createElement("i"); b.style.animationDelay = (i * 0.07 % 0.9) + "s"; $("eq").appendChild(b); }
+
+    // ---------- choices
+    $("styles").innerHTML = STYLES.map(([id, n, g]) => `<button type="button" data-style="${id}" style="--sw:${g}" aria-pressed="${id === S.style}">${n}</button>`).join("");
+    $("styles").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; S.style = b.dataset.style; [...$("styles").children].forEach((x) => x.setAttribute("aria-pressed", x === b)); };
+    function paintLens() {
+      const opts = S.kind === "music_video" ? [30, 60, 90, 120] : S.kind === "ugc" ? [15, 30, 45, 60] : [60, 90, 120];
+      if (!opts.includes(S.length)) S.length = S.kind === "ugc" ? 30 : 60;
+      $("lens").innerHTML = opts.map((n) => `<button type="button" data-len="${n}" aria-pressed="${n === S.length}">${n < 60 ? n + "s" : n / 60 + ":00"}</button>`).join("");
+      $("getText").textContent = S.kind === "ugc"
+        ? `A ${S.length}-second creator-style ad: you talking to the camera like a real post, a scroll-stopping hook, proof shots, captions and a call to action.`
+        : S.kind === "music_video"
+        ? `A ${S.length}-second music video of you performing your song, synced to your vocal and cut on the beat, with story shots from your idea.`
+        : `A ${S.length / 60}-minute short film starring you, with spoken scenes, narration and your song as the score.`;
+    }
+    $("lens").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; S.length = +b.dataset.len; paintLens(); };
+    function paintIdeas() { $("ideas").innerHTML = IDEAS[S.kind].map((t) => `<button type="button">${esc(t)}</button>`).join(""); }
+    $("ideas").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const d = $("desc"); d.value = (d.value.trim() ? d.value.trim().replace(/[.,]?$/, ", ") + b.textContent.toLowerCase() : b.textContent) ; d.dispatchEvent(new Event("input")); d.focus(); };
+    document.querySelector(".seg").onclick = (e) => {
+      const b = e.target.closest("button"); if (!b) return; S.kind = b.dataset.kind;
+      document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+      $("desc").placeholder = S.kind === "ugc"
+        ? "I'm promoting my Survivor Collection hoodie. Hook: 'This hoodie has a story.' Show me wearing it, the print up close, me in my car talking about turning negative into positive, end with: tap the link and grab yours."
+        : S.kind === "music_video"
+        ? "Me performing on a rooftop at night over the city, then riding through my old block in a black Charger, flashbacks of coming up from nothing, ending on stage with the crowd going crazy."
+        : "I come home from the army to Vineland and my little brother is running with the wrong crowd. One night I have to choose between the street and getting him out. It ends at sunrise, us two on the porch.";
+      $("make").textContent = { music_video: "Make my video", short_film: "Make my film", ugc: "Make my UGC ad" }[S.kind];
+      $("songH").textContent = S.kind === "ugc" ? "Music (optional)" : "Your song";
+      paintLens(); paintIdeas(); check();
+    };
+    $("desc").addEventListener("input", () => { $("descN").textContent = $("desc").value.length; check(); });
+    $("artist").addEventListener("input", () => { $("reelArtist").textContent = $("artist").value.trim().toUpperCase() || "YOUR NAME"; });
+    $("title").addEventListener("input", () => { const t = $("title").value.trim(); $("reelTitle").textContent = "“" + (t || "your song").toUpperCase() + "”"; });
+    $("rights").addEventListener("change", check);
+
+    // ---------- photo
+    function drag(el) {
+      ["dragenter", "dragover"].forEach((ev) => el.addEventListener(ev, (e) => { e.preventDefault(); el.classList.add("over"); }));
+      ["dragleave", "drop"].forEach((ev) => el.addEventListener(ev, () => el.classList.remove("over")));
+    }
+    drag($("photoDrop")); drag($("songDrop"));
+    $("photoIn").addEventListener("change", async () => {
+      const f = $("photoIn").files[0]; if (!f) return;
+      err("");
+      if (!/^image\//.test(f.type)) return err("That isn't a photo. Use a JPG or PNG.");
+      try {
+        const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("bad")); i.src = URL.createObjectURL(f); });
+        if (Math.min(img.naturalWidth, img.naturalHeight) < 360) return err("That photo is too small. Use one at least 360 pixels wide.");
+        const k = Math.min(1, 2048 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        S.photo = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.92));
+        const url = URL.createObjectURL(S.photo);
+        $("photoPv").style.backgroundImage = `url(${url})`; $("photoPv").hidden = false;
+        $("photoDrop").classList.add("has"); $("photoDrop").querySelector(".ph").hidden = true; $("photoDrop").querySelector(".chg").hidden = false;
+        $("reelFace").style.backgroundImage = `url(${url})`; $("reelFace").textContent = "";
+      } catch { err("Couldn't read that photo. Try a JPG or PNG."); }
+      check();
+    });
+
+    // ---------- song
+    $("songIn").addEventListener("change", async () => {
+      const f = $("songIn").files[0]; if (!f) return;
+      err("");
+      if (f.size > 50 * 1048576) return err("That song is over 50 MB. Export an MP3 or a shorter WAV.");
+      S.song = f; S.songDur = 0;
+      $("songName").textContent = f.name;
+      $("songAu").src = URL.createObjectURL(f);
+      $("songDrop").classList.add("has"); $("songDrop").querySelector(".ph").hidden = true; $("songDrop").querySelector(".chg").hidden = false;
+      if (!$("title").value) { $("title").value = f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").slice(0, 80); $("title").dispatchEvent(new Event("input")); }
+      try {
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        const buf = await ac.decodeAudioData(await f.arrayBuffer());
+        S.songDur = buf.duration; drawWave(buf); ac.close();
+        if (buf.duration < 8) { err("That song is under 8 seconds. Upload the full track."); S.song = null; }
+      } catch { S.songDur = 0; /* the server checks it too */ }
+      check();
+    });
+    function drawWave(buf) {
+      const cv = $("wave"), g = cv.getContext("2d"), d = buf.getChannelData(0), n = 150, step = Math.floor(d.length / n);
+      g.clearRect(0, 0, cv.width, cv.height);
+      const grad = g.createLinearGradient(0, 0, cv.width, 0); grad.addColorStop(0, "#22d3ee"); grad.addColorStop(1, "#ec4899"); g.fillStyle = grad;
+      for (let i = 0; i < n; i++) {
+        let m = 0; for (let j = 0; j < step; j += 64) m = Math.max(m, Math.abs(d[i * step + j] || 0));
+        const h = Math.max(3, m * cv.height * 0.92);
+        g.fillRect(i * (cv.width / n), (cv.height - h) / 2, cv.width / n - 1.5, h);
+      }
+    }
+
+    // ---------- api
+    function sess() { try { return JSON.parse(localStorage.getItem("hswjoin:studio365")); } catch { return null; } }
+    async function api(body, retry = true) {
+      const s = sess();
+      if (!s) throw Object.assign(new Error("Log in first"), { code: 401 });
+      if (s.expires_at - Date.now() < 60000 && retry) { await HSWJoin.refresh(); return api(body, false); }
+      const r = await fetch(FN, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + s.access_token }, body: JSON.stringify({ app: "studio365", ...body }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 401 && retry) { await HSWJoin.refresh(); return api(body, false); }
+      if (!r.ok || j.error) throw Object.assign(new Error(j.error || "Something went wrong. Try again."), { code: r.status, need: j.need });
+      return j;
+    }
+    async function upload(kind, blob) {
+      const type = blob.type || ({ mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", flac: "audio/flac" }[(blob.name || "").split(".").pop().toLowerCase()] || "audio/mpeg");
+      const t = await api({ a: "upload", kind, type, size: blob.size });
+      const r = await fetch(t.url, { method: "PUT", headers: { "content-type": type, "x-upsert": "false" }, body: blob });
+      if (!r.ok) throw new Error(kind === "photo" ? "Your photo didn't upload. Try again." : "Your song didn't upload. Try again.");
+      return t.path;
+    }
+    function err(m) { $("err").textContent = m || ""; }
+    function check() {
+      const ready = S.photo && (S.song || S.kind === "ugc") && $("desc").value.trim().length >= 10 && $("rights").checked && !S.busy;
+      $("make").disabled = !ready;
+    }
+    function paintQuota() {
+      const q = S.quota, st = HSWJoin.state || {};
+      let t = "";
+      if (!st.signedIn) t = "Log in or join to make videos";
+      else if (!q) t = "";
+      else if (q.owner) t = "<b>Unlimited</b> videos";
+      else if (!q.active) t = "Join a plan to make videos";
+      else t = `<b>${q.left}</b> of ${q.limit} video${q.limit === 1 ? "" : "s"} left this month`;
+      $("quota").innerHTML = t;
+      $("libNote").innerHTML = q && q.active && !q.owner && q.limits ? `Starter ${q.limits.starter} · Plus ${q.limits.plus} · Pro ${q.limits.pro} videos a month` : "";
+    }
+    async function loadQuota() { try { S.quota = await api({ a: "quota" }); } catch { S.quota = null; } paintQuota(); }
+
+    $("make").onclick = async () => {
+      err("");
+      const st = HSWJoin.state || {};
+      if (!st.signedIn || !st.active) { HSWJoin.open("plus"); return; }
+      if (S.quota && S.quota.left === 0 && !S.quota.owner) { err(`You've used all ${S.quota.limit} videos on your plan this month.`); HSWJoin.open("pro"); return; }
+      S.busy = true; check();
+      const btn = $("make"), label = btn.textContent;
+      try {
+        btn.textContent = "Uploading photo…"; const photo_path = await upload("photo", S.photo);
+        const song_path = S.song ? (btn.textContent = "Uploading song…", await upload("song", S.song)) : null;
+        btn.textContent = "Sending to iRun…";
+        const r = await api({ a: "create", kind: S.kind, style: S.style, length: S.length, description: $("desc").value.trim(), title: $("title").value.trim(), artist: $("artist").value.trim(), photo_path, song_path });
+        S.quota = r.quota; paintQuota();
+        await loadJobs();
+        $("mine").scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (e) {
+        err(e.message);
+        if (e.need === "plan") HSWJoin.open("plus"); else if (e.need === "upgrade") HSWJoin.open("pro");
+      } finally { S.busy = false; btn.textContent = label; check(); }
+    };
+
+    // ---------- library
+    const PLAY = '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="31" fill="rgba(0,0,0,.55)" stroke="rgba(255,255,255,.7)"/><path d="M26 20l20 12-20 12z" fill="#fff"/></svg>';
+    function card(j) {
+      const name = j.title || ({ music_video: "Music video", short_film: "Short film", ugc: "UGC ad" }[j.kind] || "Video");
+      const kind = { music_video: "Music video", short_film: "Short film", ugc: "UGC ad" }[j.kind] || "Video";
+      if (j.status === "done") return `<article class="vid"><div class="po" style="background-image:url('${esc(j.poster_url)}')"></div><div class="sh"></div>
+        <button class="play" data-v="${esc(j.video_url)}" aria-label="Play ${esc(name)}">${PLAY}</button>
+        <div class="in"><div class="k">${kind} · Ready</div><div class="t">${esc(name)}</div>
+        <div class="acts"><a href="${esc(j.video_url)}" download="${esc(name)}.mp4" target="_blank" rel="noopener">Save</a><button type="button" data-share="${esc(j.video_url)}" data-n="${esc(name)}">Share</button></div></div></article>`;
+      if (j.status === "failed") return `<article class="vid"><div class="po"></div><div class="sh"></div><div class="in"><div class="k" style="color:#fca5a5">${kind} · Didn't finish</div><div class="t">${esc(name)}</div><div class="st">${esc(j.error || "Try again.")}</div></div></article>`;
+      const p = j.status === "queued" ? 2 : Math.max(3, j.progress || 0);
+      return `<article class="vid rendering"><div class="po"></div><div class="sh"></div><div class="in"><div class="k">${kind} · ${j.status === "queued" ? "In line" : "Filming"}</div><div class="t">${esc(name)}</div>
+        <div class="st">${esc(j.status === "queued" ? "Starts in a few minutes" : (j.stage || "Working"))}</div><div class="pb"><i style="width:${p}%"></i></div></div></article>`;
+    }
+    async function loadJobs() {
+      try { S.jobs = (await api({ a: "list" })).jobs; } catch { return; }
+      $("grid").innerHTML = S.jobs.length ? S.jobs.map(card).join("") : '<div class="empty">Your videos show up here while they film and when they\'re ready.</div>';
+    }
+    $("grid").onclick = async (e) => {
+      const p = e.target.closest("[data-v]"); if (p) { $("mv").src = p.dataset.v; $("modal").classList.add("on"); $("mv").play().catch(() => {}); return; }
+      const s = e.target.closest("[data-share]");
+      if (s) {
+        const url = s.dataset.share;
+        try { if (navigator.share) await navigator.share({ title: s.dataset.n, text: "My new video, made with HSW365studio", url }); else { await navigator.clipboard.writeText(url); s.textContent = "Copied"; } } catch { /* closed */ }
+      }
+    };
+    const closeM = () => { $("modal").classList.remove("on"); $("mv").pause(); $("mv").removeAttribute("src"); $("mv").load(); };
+    $("mx").onclick = closeM; $("modal").onclick = (e) => { if (e.target === $("modal")) closeM(); };
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeM(); });
+
+    let timer = null;
+    function poll() {
+      clearTimeout(timer);
+      const live = S.jobs.some((j) => j.status === "queued" || j.status === "rendering");
+      timer = setTimeout(async () => { if (!document.hidden) { const before = S.jobs.filter((j) => j.status === "done").length; await loadJobs(); if (S.jobs.filter((j) => j.status === "done").length > before) loadQuota(); } poll(); }, live ? 7000 : 30000);
+    }
+    async function boot() {
+      paintLens(); paintIdeas(); check();
+      try { await window.HSWJoinReady; } catch { /* offline */ }
+      paintQuota();
+      if ((HSWJoin.state || {}).signedIn) { await Promise.all([loadQuota(), loadJobs()]); }
+      poll();
+    }
+    window.addEventListener("hswjoin", () => { if ((HSWJoin.state || {}).signedIn) { loadQuota(); loadJobs(); } else paintQuota(); });
+    boot();
+  })();
+  </script>
+</body>
+</html>
