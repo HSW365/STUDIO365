@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STUDIO365 AI Business OS</title><link rel="stylesheet" href="assets/css/ai-os.css"></head>
+<body>
+<div class="shell">
+<aside class="side"><div class="brand">STUDIO<span>365</span><small>AI BUSINESS OS</small></div>
+<nav id="nav"><button class="active" data-view="command">Command Center</button><button data-view="crm">CRM & Leads</button><button data-view="estimates">Estimates</button><button data-view="appointments">Appointments</button><button data-view="automations">Automations</button><button data-view="agents">AI Agents</button><button data-view="analytics">Analytics</button></nav>
+<div class="side-foot"><div>TRIAL STATUS</div><strong id="trial">3 DAYS FREE</strong><button id="upgrade">START $15/MONTH</button></div></aside>
+<main><header><div><div class="eyebrow">HSW365 INTELLIGENCE LAYER</div><h1 id="title">Command Center</h1></div><div class="status"><i></i> AI ONLINE <span id="plan">TRIAL</span></div></header>
+<section id="view-command" class="view active">
+<div class="hero"><div><p class="eyebrow">ONE COMMAND. MANY AGENTS.</p><h2>What do you want STUDIO365 to do?</h2><p>Run your business from one AI command center. Leads, estimates, proposals, appointments, follow-ups and operations.</p></div></div>
+<div class="command"><input id="command" placeholder="Try: Follow up with every open lead and draft the messages"><button id="run">RUN</button></div>
+<div class="grid cards"><article><span>OPEN LEADS</span><b id="leadCount">24</b><em>+8 this week</em></article><article><span>ESTIMATES</span><b>$18,420</b><em>7 awaiting response</em></article><article><span>APPOINTMENTS</span><b>12</b><em>Next: 10:30 AM</em></article><article><span>AI ACTIONS</span><b id="actionCount">148</b><em>automated this month</em></article></div>
+<div class="panel"><div class="panel-head"><h3>AI Activity</h3><span>LIVE</span></div><div id="activity" class="activity"></div></div>
+</section>
+<section id="view-crm" class="view"><div class="toolbar"><input placeholder="Search contacts, companies, leads…"><button>+ ADD LEAD</button></div><div class="panel"><div class="table"><div class="tr th"><span>CONTACT</span><span>COMPANY</span><span>STAGE</span><span>VALUE</span><span>ACTION</span></div><div id="leads"></div></div></div></section>
+<section id="view-estimates" class="view"><div class="grid two"><div class="panel"><h3>AI Estimate Generator</h3><p>Describe the job and let AI build line items, pricing logic, scope and a client-ready proposal.</p><textarea id="job" placeholder="Example: Replace a 50-gallon electric water heater…"></textarea><button id="estimate">GENERATE ESTIMATE</button></div><div class="panel"><h3>Recent Estimates</h3><div id="estimates"></div></div></div></section>
+<section id="view-appointments" class="view"><div class="panel"><h3>Appointment Pipeline</h3><div class="calendar" id="calendar"></div></div></section>
+<section id="view-automations" class="view"><div class="grid two"><div class="panel"><h3>Automation Engine</h3><div class="toggle"><b>New lead → instant response</b><input type="checkbox" checked></div><div class="toggle"><b>Estimate viewed → follow-up</b><input type="checkbox" checked></div><div class="toggle"><b>Appointment tomorrow → reminder</b><input type="checkbox" checked></div><div class="toggle"><b>Unanswered call → AI callback text</b><input type="checkbox" checked></div></div><div class="panel"><h3>Action Center</h3><div id="actions"></div></div></div></section>
+<section id="view-agents" class="view"><div class="grid cards"><article><span>ORCHESTRATOR</span><b>ONLINE</b><em>Routes every request</em></article><article><span>SALES AGENT</span><b>READY</b><em>Lead qualification</em></article><article><span>ESTIMATE AGENT</span><b>READY</b><em>Scopes + proposals</em></article><article><span>RECEPTIONIST</span><b>READY</b><em>Calls + bookings</em></article></div></section>
+<section id="view-analytics" class="view"><div class="grid cards"><article><span>LEAD CONVERSION</span><b>32%</b><em>Last 30 days</em></article><article><span>RESPONSE TIME</span><b>1.4s</b><em>AI average</em></article><article><span>FOLLOW-UPS</span><b>96%</b><em>Completed automatically</em></article><article><span>PIPELINE</span><b>$64.8K</b><em>Open opportunity</em></article></div></section>
+</main></div>
+<div id="toast"></div><script src="assets/js/ai-os.js"></script></body></html>
