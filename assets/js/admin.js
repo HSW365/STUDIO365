@@ -77,7 +77,7 @@ $('makeForm').addEventListener('submit', async (e) => {
     const text = [
       `Your ${cfg.PRODUCT_NAME || 'HSW365studio'} ${{ starter: 'Starter', plus: 'Plus', pro: 'Pro' }[plan]} plan is ready.`, '',
       'Tap this link on the device you record on and your plan turns on by itself:', link, '',
-      `It is good until ${until}. Nothing bills on its own. When you want another month, buy it again at hsw365.co and you get a new link.`, '',
+      `It is good until ${until}. Nothing bills on its own. When you want another month, buy it again at hsw365.net and you get a new link.`, '',
       'If the link gives you trouble, open the studio, press Plans and paste this key:', k.key, '',
       'Turn negative into positive.', 'HSW365 Media',
     ].join('\n');

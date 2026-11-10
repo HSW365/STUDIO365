@@ -43,7 +43,7 @@ A full vocal studio that runs in the browser: record over a beat, pitch-correct 
 
 ## Plans and checkout
 
-The first 3 projects on a device are free (`FREE_PROJECTS` in `config.js`). After that a plan is needed to put audio into a new project. Three plans, each including the one before it, sold as one-month purchases on the Shopify store (hsw365.co):
+The first 3 projects on a device are free (`FREE_PROJECTS` in `config.js`). After that a plan is needed to put audio into a new project. Three plans, each including the one before it, sold as one-month purchases on the Shopify store (hsw365.net):
 
 | Plan | Price | Adds |
 | --- | --- | --- |

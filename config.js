@@ -8,7 +8,7 @@ window.STUDIO365_CONFIG = {
   // Change a price in Shopify AND here. Each purchase is one month; the key maker (admin.html) issues the key.
   // The first FREE_PROJECTS sessions on a device need no plan.
   FREE_PROJECTS: 3,
-  SHOP_PRODUCT_URL: "https://hsw365.co/products/studio365-record-tune-mix-and-master-in-your-browser",
+  SHOP_PRODUCT_URL: "https://hsw365.net/products/studio365-record-tune-mix-and-master-in-your-browser",
   PLANS: [
     { id: "starter", name: "Starter", price: 15, variant: "47998395744417", blurb: "Unlimited projects. Record, tune, mix, master, export." },
     { id: "plus", name: "Plus", price: 20, variant: "47998395777185", blurb: "Adds Tune Pro, vocal stacks and harmonies, six more presets." },

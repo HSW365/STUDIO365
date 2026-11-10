@@ -31,7 +31,7 @@ export const isPro = () => hasPlan('plus');                      // the creative
 export const proStatus = () => state;
 export const prices = { monthly: PRICE, first: FIRST, cashtag: CASHTAG };
 export const cashLink = (amt) => `https://cash.app/${encodeURIComponent(CASHTAG).replace('%24', '$')}/${amt}`;
-export const buyLink = (pl) => (pl.variant ? `https://hsw365.co/cart/${pl.variant}:1` : cfg.SHOP_PRODUCT_URL || 'https://hsw365.co');
+export const buyLink = (pl) => (pl.variant ? `https://hsw365.net/cart/${pl.variant}:1` : cfg.SHOP_PRODUCT_URL || 'https://hsw365.net');
 
 // ---- owner access: studio.html#owner=CODE once per device, checked against cfg.OWNER_HASH
 const OWNER_KEY = 'studio365:owner';
@@ -205,7 +205,7 @@ export function openPro(feature, need = null) {
   $('proLede').textContent = `Your first ${FREE_PROJECTS} projects are free. After that, pick a plan. Each purchase is one month and nothing bills on its own.`;
   dlg.querySelectorAll('.pro-plan').forEach((a) => a.classList.toggle('dim', !!need && RANK[a.dataset.plan] < RANK[need]));
   $('proMsg').className = 'pro-msg';
-  $('proMsg').textContent = `Checkout is on hsw365.co. Your key is emailed to the address on your order, usually the same day. Tap the link in that email and your plan turns on here. Questions: ${CONTACT}`;
+  $('proMsg').textContent = `Checkout is on hsw365.net. Your key is emailed to the address on your order, usually the same day. Tap the link in that email and your plan turns on here. Questions: ${CONTACT}`;
   $('proKeyMsg').textContent = '';
   paint();
   if (feature && (!state.pro || forceBuy)) $('proTitle').textContent = pl ? `${feature}: ${pl.name} and up` : feature;
