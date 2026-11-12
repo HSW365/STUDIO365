@@ -11,7 +11,7 @@ window.STUDIO365_CONFIG = {
   SHOP_PRODUCT_URL: "https://hsw365.net/products/studio365-record-tune-mix-and-master-in-your-browser",
   PLANS: [
     { id: "starter", name: "Starter", price: 15, variant: "47998395744417", blurb: "Unlimited projects. Record, tune, mix, master, export." },
-    { id: "plus", name: "Plus", price: 20, variant: "47998395777185", blurb: "Adds Tune Pro, vocal stacks and harmonies, six more presets." },
+    { id: "plus", name: "Plus", price: 20, variant: "47998395777185", blurb: "Adds Mix AI, Tune Pro, vocal stacks and harmonies, six more presets." },
     { id: "pro", name: "Pro", price: 25, variant: "47998395809953", blurb: "Adds the A&R365 record check, release packs and session backups." }
   ],
 

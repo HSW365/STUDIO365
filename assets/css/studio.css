@@ -251,7 +251,7 @@ body.studio { min-height: 100vh; display: flex; flex-direction: column; backgrou
 }
 
 /* ---- Pro: stack tab, presets, record check, release pack ---- */
-.tabs { grid-template-columns: repeat(4, 1fr); }
+.tabs { grid-template-columns: repeat(5, 1fr); }
 #tab-stack[aria-selected="true"] { border-bottom-color: var(--violet); }
 .fader[data-group="stack"] input { --acc: var(--violet); }
 .field input:not([type="checkbox"]) {

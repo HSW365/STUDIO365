@@ -18,7 +18,7 @@ let amount = FIRST;
 // Three plans, each one including the one before it. A key says which plan it is for.
 export const PLANS = cfg.PLANS || [
   { id: 'starter', name: 'Starter', price: 15, blurb: 'Unlimited projects. Record, tune, mix, master, export.' },
-  { id: 'plus', name: 'Plus', price: 20, blurb: 'Adds Tune Pro, vocal stacks and harmonies, six more presets.' },
+  { id: 'plus', name: 'Plus', price: 20, blurb: 'Adds Mix AI, Tune Pro, vocal stacks and harmonies, six more presets.' },
   { id: 'pro', name: 'Pro', price: 25, blurb: 'Adds the A&R365 record check, release packs and session backups.' },
 ];
 const RANK = { starter: 1, plus: 2, pro: 3 };

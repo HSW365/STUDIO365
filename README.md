@@ -32,6 +32,18 @@ A full vocal studio that runs in the browser: record over a beat, pitch-correct 
 - **Sessions** autosave to IndexedDB and reopen on return. Settings and audio are stored apart, so a fader move saves a few kilobytes and each piece of audio is written once.
 - Shortcuts: Space play/stop, R record, L loop, Ctrl+Z undo, Ctrl+Shift+Z redo, Delete silences the selection, + and - zoom.
 
+### Mix AI (Plus)
+
+Talk to the mix. Everything runs in the browser, with no API key and no per-use cost, and it moves the same controls you see on the Tune and Mix tabs.
+
+- **Prompt box and voice**: type or tap the mic and say it: "more air", "remove the reverb and delay", "set the key to C minor", "make it sound like Drake", "add the demon effect", "hard tune", "make it wider". Voice uses the browser's built-in speech recognition (Chrome, Edge, Safari).
+- **What do you hear?**: measures the vocal (level, peaks, room noise, low-mid mud, presence, harshness, air, level against the beat) and lists what to fix, with a one-tap Fix these.
+- **Fix it (auto mix)**: reads the beat's key, cleans, shapes tone, levels, de-esses, tunes to the key, sets space for the voice's role and balances the vocal to the beat, with step-by-step progress.
+- **Styles**: eleven starting chains (melodic trap, demon voice, close and dry rap, smooth R&B, polished pop, intimate whisper, stadium hook, robot, lo-fi tape, telephone, deep narrator). Artist names in a prompt point at the closest style. These are settings, not copies of anyone's voice.
+- **Role**: lead, rap verse, ad-libs, backing, spoken word set where the vocal sits first.
+- **Simple and Advanced**: Simple has quick asks and five smart macros (air, presence, body, reverb, delay). Advanced shows the whole chain in signal order with a bypass switch on each piece.
+- **Undo, redo and Compare**: every Mix AI change can be undone, and Compare flips between where you started and now.
+
 ### Pro (paid with Cash App)
 
 - **Tune Pro**: humanize, flex (leaves bends alone), note glide, transpose, voice character (formant), fine tune, a keyboard to pick exactly which notes the tuning may land on, and a pitch editor where each note is a block you drag to a new pitch or leave untuned.
@@ -48,7 +60,7 @@ The first 3 projects on a device are free (`FREE_PROJECTS` in `config.js`). Afte
 | Plan | Price | Adds |
 | --- | --- | --- |
 | Starter | $15 | Unlimited projects, the full studio |
-| Plus | $20 | Tune Pro, vocal stacks and harmonies, six more presets |
+| Plus | $20 | Mix AI, Tune Pro, vocal stacks and harmonies, six more presets |
 | Pro | $25 | A&R365 record check, release pack, session backup |
 
 There is no server. A key is a short signed note (email, plan, end date). The site holds only the public half of the signing key, so it can check a key but nobody can make one from the page source.

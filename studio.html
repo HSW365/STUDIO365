@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="assets/css/studio.css">
   <link rel="stylesheet" href="assets/css/console.css">
   <link rel="stylesheet" href="assets/css/pro.css">
+  <link rel="stylesheet" href="assets/css/ai.css?v=20261112">
   <script>
     // If anything breaks, say so on screen instead of leaving dead buttons.
     (function () {
@@ -184,13 +185,16 @@
 
     <aside class="rack" aria-label="Processing rack">
       <div class="tabs" role="tablist">
-        <button role="tab" id="tab-tune" aria-controls="panel-tune" aria-selected="true" type="button">Tune</button>
+        <button role="tab" id="tab-ai" aria-controls="panel-ai" aria-selected="true" type="button">Mix AI</button>
+        <button role="tab" id="tab-tune" aria-controls="panel-tune" aria-selected="false" type="button">Tune</button>
         <button role="tab" id="tab-mix" aria-controls="panel-mix" aria-selected="false" type="button">Mix</button>
         <button role="tab" id="tab-stack" aria-controls="panel-stack" aria-selected="false" type="button">Stack</button>
         <button role="tab" id="tab-master" aria-controls="panel-master" aria-selected="false" type="button">Master</button>
       </div>
 
-      <section class="tab-panel" id="panel-tune" role="tabpanel" aria-labelledby="tab-tune">
+      <section class="tab-panel" id="panel-ai" role="tabpanel" aria-labelledby="tab-ai"></section>
+
+      <section class="tab-panel" id="panel-tune" role="tabpanel" aria-labelledby="tab-tune" hidden>
         <label class="switch-row"><span>Pitch correction</span><input type="checkbox" id="tuneOn" checked role="switch"><i></i></label>
         <div class="field-row two">
           <label class="field"><span>Key</span><select id="tuneRoot"></select></label>

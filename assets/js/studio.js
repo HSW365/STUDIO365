@@ -10,6 +10,7 @@ import { PRESETS } from './presets.js';
 import * as Pack from './pack.js';
 import { work, cancelJobs, isCancel } from './jobs.js';
 import { makeBeat, BEAT_STYLES } from './beatmaker.js';
+import { initCopilot } from './copilot.js?v=20261112';
 
 const $ = (id) => document.getElementById(id);
 const DEFAULT_TUNE = { enabled: true, root: 9, scale: 'minor', speedMs: 15, amount: 100, keepVibrato: 30, humanize: 0, flex: 0, glideMs: 0, transpose: 0, formant: 0, detune: 0, mask: null, edits: {} };
@@ -1828,6 +1829,7 @@ function syncControls() {
   document.querySelectorAll('input[name="target"]').forEach((r) => { r.checked = Number(r.value) === P.master.target; });
   $('bpm').value = P.bpm;
   $('projectName').value = P.name;
+  if (copilot) copilot.refresh();
   $('compOn').checked = !!P.mix.compOn;
   $('delayNote').value = P.mix.delayNote;
   renderKeys(); syncBand(); syncConsole(); drawEq();
@@ -2145,6 +2147,7 @@ async function openLibrary() {
 
 function loadIntoUi(p) {
   P = p;
+  if (copilot) copilot.reset();
   const oldStack = P.stack?.takes || {};
   P.stack = { ...DEFAULT_STACK, ...P.stack, takes: {} };
   P.preset = P.preset || ''; P.release = P.release || null; P.cover = P.cover || null;
@@ -2493,8 +2496,20 @@ async function encodeMp3(channels, sr, kbps, onProgress) {
 }
 
 // ------------------------------------------------------------------ boot
+let copilot = null;
+function aiCommit(tune) {
+  syncControls(); renderKeys(); updateBeatUi(); markDirty(); drawTimeline();
+  if (tune) scheduleTune(0); else scheduleRender(0);
+}
 async function boot() {
   bindControls();
+  copilot = initCopilot({
+    P: () => P, commit: aiCommit, isPro, requirePro: (f) => requirePro(f),
+    sr: () => P.sr, hasVocal: () => clipsOf(leadTrack()).length > 0,
+    stem: () => renderMix({ sr: P.sr, beat: null, vocals: mixClips().vocals, mix: P.mix, bpm: P.bpm, vocalOnly: true }),
+    detectKey: async () => { const r = await analyzeBeat(true); scheduleRender(0); return r; },
+    balance: () => balanceNow(),
+  });
   const linkToast = (r) => toast(r.ok ? `Your plan is on until ${new Date(r.expires).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}. Welcome in.` : r.reason, !r.ok);
   initPro({ onChange: onProChange, onLink: linkToast }).then(({ fromLink }) => { if (fromLink) linkToast(fromLink); });
   syncControls();
