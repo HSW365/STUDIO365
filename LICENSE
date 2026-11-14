@@ -1,21 +1,47 @@
-MIT License
+PROPRIETARY SOFTWARE LICENSE — ALL RIGHTS RESERVED
 
-Copyright (c) 2026 HSW365media
+Copyright (c) 2025-2026 HSW365 Media LLC and Elvin Torres Sr. (Hoodstar365).
+All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software, including its source code, object code, design, user interface,
+graphics, text, audio, video, documentation, data, brand names, logos and all
+related materials (the "Software"), is the exclusive proprietary property of
+HSW365 Media LLC and Elvin Torres Sr. ("Owner"). The Software is protected by
+United States and international copyright, trademark, trade secret and other
+intellectual property laws.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+NO LICENSE IS GRANTED. Public availability of this repository, or the ability
+to view, clone or fork it on GitHub, does not grant any right to use the
+Software. Except as expressly permitted in a separate written agreement signed
+by the Owner, you may NOT:
+
+  1. copy, reproduce, download for reuse, or redistribute the Software, in
+     whole or in part;
+  2. modify, adapt, translate, or create derivative works of the Software;
+  3. sell, sublicense, rent, lease, lend, host, or otherwise commercialize the
+     Software or any service built from it;
+  4. reverse engineer, decompile, or disassemble the Software, or attempt to
+     extract its source code, models, prompts or algorithms;
+  5. remove or alter any copyright, trademark or proprietary notice;
+  6. use the Software, its code, or its output to build, train, or improve a
+     competing product or service, or to train any machine-learning model;
+  7. use the HSW365, HOODSTAR, HSW365 Media, Hoodstar365 or related names,
+     logos, or branding without prior written permission.
+
+Use of the Software through the Owner's officially published apps, websites and
+services is governed solely by the Owner's applicable Terms of Service.
+
+Any unauthorized use terminates automatically any permission that might
+otherwise exist and may result in civil and criminal liability, including
+injunctive relief, statutory damages and recovery of attorneys' fees.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+OWNER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE
+SOFTWARE OR ITS USE.
+
+Third-party components included in the Software remain subject to their own
+respective licenses.
+
+Licensing, partnership and permission requests: hsw365media@gmail.com
