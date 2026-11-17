@@ -1,0 +1,8 @@
+# HSW365studio
+
+> Browser-based music studio: record, tune, mix and master.
+
+Built by HSW365 Media LLC (Elvin Torres Sr., Hoodstar365).
+
+## Pages
+- https://hsw365.github.io/STUDIO365/

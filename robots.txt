@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hsw365.github.io/STUDIO365/sitemap.xml
